@@ -9,6 +9,7 @@ async function csvToNodes(url) {
   const errors = [];
   const warnings = [];
   const info = [];
+  const nodeMap = new Map();
 
   await new Promise((resolve, reject) => {
     const data = Papa.parse(url, {
@@ -31,12 +32,28 @@ async function csvToNodes(url) {
             }
             material = new THREE.MeshBasicMaterial( { color: threeJsColor(datum.Color) } );
             object = new THREE.Mesh( geometry, material );
-            object.position.set(parseNumber(datum.PositionX), parseNumber(datum.PositionY), parseNumber(datum.PositionZ)).multiplyScalar(100);
-            object.name = datum.Title;
+            object.position.set(parseNumber(datum.PositionX), parseNumber(datum.PositionY), parseNumber(datum.PositionZ)).multiplyScalar(33);
+            if (datum.Title) { object.name = datum.Title };
             graph.add( object );
+            if (datum.Uuid) {
+              nodeMap.set(datum.Uuid, object);
+              object.userData.uuid = datum.Uuid;
+            }
           } else if (datum.FromUuid || datum.ToUuid) {
-            warnings.push(`skipping edge “${datum.Title || datum.Shape || datum.ImageURL}”`);
-            // TODO: add edges
+            const fromPosition = nodeMap.get(datum.FromUuid)?.position;
+            if (!fromPosition) {
+              warnings.push(`can't find "from" node for edge “${datum.Title || datum.Shape || datum.ImageURL}”`);
+            }
+            const toPosition = nodeMap.get(datum.ToUuid)?.position;
+            if (!toPosition) {
+              warnings.push(`can't find "to" node for edge “${datum.Title || datum.Shape || datum.ImageURL}”`);
+            }
+            const points = [fromPosition, toPosition];
+            const geometry = new THREE.BufferGeometry().setFromPoints( points );
+            const material = new THREE.LineBasicMaterial( { color: threeJsColor(datum.Color) } );
+            const object = new THREE.Line( geometry, material );
+            if (datum.Title) { object.name = datum.Title };
+            graph.add( object );
           } else {
             warnings.push(`unknown thing “${datum.Title || datum.Shape || datum.ImageURL}”`);
           }
@@ -78,9 +95,9 @@ function disposeTree(tree) {
 
 function parseNumber(value) {
   if (typeof value === 'string') {
-    return parseFloat(value.replaceAll('.', '', 'g').replace(',', '.'));
+    return parseFloat(value.replaceAll('.', '', 'g').replace(',', '.') || "0");
   } else {
-    return value;
+    return value || 0;
   }
 }
 
