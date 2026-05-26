@@ -8,7 +8,7 @@ You communicate with other users using the audio from your existing meeting soft
 
 Uses the [aframe-croquet-component](https://github.com/NikolaySuslov/aframe-croquet-component) and the Multisynq network to syncronize content and user avatars.
 
-Includes two example tools:
+Includes three example tools:
 
 ## Model Presenter
 
@@ -21,3 +21,7 @@ and toggle animation.
 Data Presenter allows multiple users to immerse themselves in a 3-D dataset,
 re-scale it, and point out features with laser pointers.
 It can straighforwardly be extended to load multi-dimensional data from ArcGIS, NetCDF, HDF or GRIB files.
+
+## Graph Presenter
+
+Graph Presenter allosw multiple user to load graph data (connected nodes) and display it as a directed graph.
