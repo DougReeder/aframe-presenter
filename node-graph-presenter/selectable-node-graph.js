@@ -1,4 +1,4 @@
-// selectable-node-graph.js — a component and primitive with UI to load a node graph from a CSV URL or file
+// selectable-node-graph.js — a component and primitive with UI to load a node graph from a Noda .CSV URL or file
 // Copyright © 2026 by Doug Reeder under the MIT License
 
 const FILE_INPT_ID = 'fileInput';
@@ -43,7 +43,7 @@ AFRAME.registerComponent('selectable-node-graph', {
 		const openFileBtn = document.createElement('button');
 		openFileBtn.style.minHeight = '40px';
 		openFileBtn.style.marginRight = '2em';
-		openFileBtn.innerText = "Select CSV file";
+		openFileBtn.innerText = "Select Noda .CSV file";
 		controlStrip.appendChild(openFileBtn);
 		openFileBtn.addEventListener('click', this.handlers.openCsvFile);
 
@@ -63,7 +63,7 @@ AFRAME.registerComponent('selectable-node-graph', {
 		const urlInput = document.createElement('input');
 		urlInput.setAttribute('id', 'urlInput');
 		urlInput.setAttribute('type', 'url');
-		urlInput.setAttribute('placeholder', "Paste a URL to a .CSV");
+		urlInput.setAttribute('placeholder', "Paste a URL to a Noda .CSV");
 		urlInput.style.height = '40px';
 		urlInput.style.width = '20em';
 		urlInput.style.paddingLeft = '1em';
@@ -72,7 +72,7 @@ AFRAME.registerComponent('selectable-node-graph', {
 
 		const openUrlBtn = document.createElement('button');
 		openFileBtn.style.minHeight = '40px';
-		openUrlBtn.innerText = "Fetch CSV from URL";
+		openUrlBtn.innerText = "Fetch Noda CSV from URL";
 		urlControls.appendChild(openUrlBtn);
 		openUrlBtn.addEventListener('click', this.handlers.openUrl);
 
@@ -160,7 +160,7 @@ AFRAME.registerComponent('selectable-node-graph', {
 			if ('drop' === evt.type || 'INPUT' !== evt.target.tagName) {
 				evt.stopPropagation();
 				evt.preventDefault();
-				this.showTransientMsg(`Only a .CSV file can be ${'paste' === evt.type ? "pasted" : "dropped"} here`);
+				this.showTransientMsg(`Only a Noda .CSV file can be ${'paste' === evt.type ? "pasted" : "dropped"} here`);
 			}
 		} catch (err) {
 			this.showPersistentMsg(err, 'error');
@@ -280,11 +280,11 @@ AFRAME.registerComponent('selectable-node-graph', {
 
 	csvError: function (evt) {
 		console.error(`selectable-node-graph csvError:`, evt.detail);
-		const format = '.CSV'
+		const format = 'Noda .CSV'
 		// const format = 'gltf' === evt.detail?.format ? '.CSV' : evt.detail?.format;
 		const msg = format ?
-			`not a valid ${format?.toUpperCase?.()} file` :
-			`error while loading csv: ` + JSON.stringify(evt.detail);
+			`Not a valid ${format?.toUpperCase?.()} file` :
+			`Error while loading file: ` + JSON.stringify(evt.detail);
 		this.showPersistentMsg(msg, 'error');
 
 		const spinner = document.getElementById(SPINNER_ID);

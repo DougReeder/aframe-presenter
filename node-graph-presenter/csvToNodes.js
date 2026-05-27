@@ -1,4 +1,4 @@
-// csvToNodes.js — converts CSV data to Three.js objects
+// csvToNodes.js — converts Noda .CSV data to Three.js objects
 // Copyright © 2026 by Doug Reeder under the MIT License
 
 const SPIKY_FUDGE_FACTOR = 1.3;
