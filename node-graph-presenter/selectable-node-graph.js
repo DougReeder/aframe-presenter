@@ -236,12 +236,7 @@ AFRAME.registerComponent('selectable-node-graph', {
 			console.log(`selectable-node-graph update CSV src: “${csvUrl}”`)
 			this.clearPersistentMsg();
 
-			// this.gltfEl.setAttribute('src', csvUrl);
-			csvToNodes(this.data.src, this.el.object3D).then(({graph, errors, warnings, info}) => {
-				disposeTree(this.graph);
-				this.el.removeObject3D(this.graph);
-				this.graph = graph;
-				this.el.setObject3D('mesh', graph);
+			csvToNodes(this.data.src, this.el).then(({errors, warnings, info}) => {
 				if (errors?.length > 0) {
 					this.showTransientMsg( errors.join('\n'), 'error')
 					if (warnings?.length > 0) { console.warn(warnings.join('\n')); }
@@ -253,7 +248,7 @@ AFRAME.registerComponent('selectable-node-graph', {
 					this.showTransientMsg( info.join('\n'), 'info')
 				}
 
-				console.log(`selectable-node-graph new graph:`, graph);
+				console.log(`selectable-node-graph new elements:`, this.el.children);
 				spinner?.removeState(STATE_SPINNING);
 
 				// if (this.modelNeedsScaling) {

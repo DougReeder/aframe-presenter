@@ -24,4 +24,5 @@ It can straighforwardly be extended to load multi-dimensional data from ArcGIS, 
 
 ## Graph Presenter
 
-Graph Presenter allosw multiple user to load graph data (connected nodes) and display it as a directed graph.
+Graph Presenter allows multiple user to load graph data (connected nodes) from a Noda .CSV file and display it as a directed graph.
+Users in VR can use pointers to call out parts of the graph.
