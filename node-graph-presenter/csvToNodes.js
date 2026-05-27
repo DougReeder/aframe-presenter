@@ -1,6 +1,8 @@
 // csvToNodes.js — converts CSV data to Three.js objects
 // Copyright © 2026 by Doug Reeder under the MIT License
 
+const SPIKY_FUDGE_FACTOR = 1.3;
+
 async function csvToNodes(url) {
   console.debug('csvToNodes: url = ' + url);
 
@@ -21,18 +23,55 @@ async function csvToNodes(url) {
         }
         for (datum of data) {
           if (!datum.Uuid) continue;
+          const size = parseInt(datum.Size || "5") / 50;
           if (datum.PositionX || datum.PositionY || datum.PositionZ) {
             let geometry, material, object;
+            let side = THREE.FrontSide;
             switch (datum.Shape) {
               case 'Ball':
-                geometry = new THREE.SphereGeometry(datum.Size || 1);
+                geometry = new THREE.SphereGeometry( size );
+                break;
+              case 'Box':
+                const boxLength = (Math.sin(Math.PI/4)+1)*size;
+                geometry = new THREE.BoxGeometry( boxLength, boxLength, boxLength );
+                break;
+              case 'Tetra':
+                geometry = new THREE.TetrahedronGeometry( size * SPIKY_FUDGE_FACTOR );
+                break;
+              case 'Cylinder':
+                const cylinderSize = (Math.sin(Math.PI/4)+1)/2*size;
+                geometry = new THREE.CylinderGeometry( cylinderSize, cylinderSize, cylinderSize*2 );
+                break;
+              case 'Diamond':   // octahedron
+                geometry = new THREE.OctahedronGeometry( size * 1.1 );
+                break;
+              case 'Hourglass': // hourglass
+                const hourglassCoordinate = (Math.sin(Math.PI/4)+1)/2*size;
+                const hourglassPoints = [new THREE.Vector2( 0, -hourglassCoordinate ), new THREE.Vector2( hourglassCoordinate, -hourglassCoordinate ), new THREE.Vector2( 0, 0 ), new THREE.Vector2( hourglassCoordinate, hourglassCoordinate ), new THREE.Vector2( 0, hourglassCoordinate )];
+                geometry = new THREE.LatheGeometry( hourglassPoints );
+                break;
+              case 'Plus':   // 3D plus sign (7 cubes)
+                const plusDim = (Math.sin(Math.PI*5/12)+1)/2*size;
+                const plusPoints = [new THREE.Vector2( 0, -plusDim ), new THREE.Vector2( plusDim/3, -plusDim ), new THREE.Vector2( plusDim/3, -plusDim/3 ), new THREE.Vector2( plusDim, -plusDim/3 ), new THREE.Vector2( plusDim, plusDim/3 ), new THREE.Vector2( plusDim/3, plusDim/3 ), new THREE.Vector2( plusDim/3, plusDim ), new THREE.Vector2( 0, plusDim )];
+                geometry = new THREE.LatheGeometry( plusPoints, 4 );
+                break;
+              case 'Star':   // stellated dodecahedron
+                const starPoints = [
+                  new THREE.Vector2( 0, -size ),
+                  new THREE.Vector2( Math.sin(Math.PI/6)*size/2, -Math.cos(Math.PI/6)*size/2 ),
+                  new THREE.Vector2( Math.sin(Math.PI/3)*size, -Math.cos(Math.PI/3)*size ),
+                  new THREE.Vector2( size/2, 0 ),
+                  new THREE.Vector2( Math.sin(Math.PI/3)*size, Math.cos(Math.PI/3)*size ),
+                  new THREE.Vector2( Math.sin(Math.PI/6)*size/2, Math.cos(Math.PI/6)*size/2 ),
+                  new THREE.Vector2( 0, size )];
+                geometry = new THREE.LatheGeometry( starPoints, 3 );
                 break;
               default:
-                geometry = new THREE.PlaneGeometry(datum.Size || 1, datum.Size || 1);
+                geometry = new THREE.PlaneGeometry(size, size);
             }
-            material = new THREE.MeshBasicMaterial( { color: threeJsColor(datum.Color) } );
+            material = new THREE.MeshLambertMaterial( { color: threeJsColor(datum.Color), side } );
             object = new THREE.Mesh( geometry, material );
-            object.position.set(parseNumber(datum.PositionX), parseNumber(datum.PositionY), parseNumber(datum.PositionZ)).multiplyScalar(33);
+            object.position.set(parseNumber(datum.PositionX), parseNumber(datum.PositionY), parseNumber(datum.PositionZ));
             if (datum.Title) { object.name = datum.Title };
             graph.add( object );
             if (datum.Uuid) {
