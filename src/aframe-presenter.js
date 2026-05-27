@@ -15,7 +15,7 @@ const CURSOR_PREFIX_RIGHT = 'cursor-right-';
 const HELP_TEXT =
 `Organize meetings using your existing software.
 
-Click “Share session”, or “Copy session URL” then paste the URL into your meeting chat.
+Click “Share session”, or “Copy session URL” then paste the URL into your meeting text chat.
 While presenting, continue to use your meeting audio.
 
 Any user in VR can display pointers using controllers or hand-tracking.`;
@@ -187,7 +187,7 @@ AFRAME.registerComponent('presenter', {
 	shareSession: async function (_evt) {
 		try {
 			const data = {
-				title: "Model Presentation",
+				title: document.title,
 				text: "Follow this URL to join",
 				url: window.location.href
 			};
@@ -202,7 +202,7 @@ AFRAME.registerComponent('presenter', {
 	copySessionUrl: async function (_evt) {
 		try {
 			await navigator.clipboard.writeText(window.location.href);
-			this.showTransientMsg(`Paste the URL into your meeting chat`);
+			this.showTransientMsg(`Paste the URL into your meeting text chat`);
 		} catch (err) {
 			this.showTransientMsg(`Copy failed: ` + (err.message || err.name || err?.toString()));
 		}
