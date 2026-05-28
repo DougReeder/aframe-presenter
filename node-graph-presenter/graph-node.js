@@ -89,12 +89,14 @@ AFRAME.registerComponent('graph-node', {
   },
 
   threeJsColor: function (color) {
-    color = new String(color).trim();
-
-    if (/^[0-9A-Fa-f]{3}$/.test(color)) {
-      return '#'+color;
+    if (typeof color !== 'string') {
+      return color;
     }
-    if (/^[0-9A-Fa-f]{6}$/.test(color)) {
+
+    color = color.trim();
+
+    if (/^[0-9A-Fa-f]{1,6}$/.test(color)) {
+      color = ("00000" + color).slice(-6);
       return '#'+color;
     }
 
@@ -103,11 +105,11 @@ AFRAME.registerComponent('graph-node', {
     }
 
     const digits = '0123456789ABCDEF';
-    let randomColor = '0x';
+    let randomColor = '#';
     for (let i = 0; i < 6; i++) {
       randomColor += digits[Math.floor(Math.random() * 16)];
     }
-    return parseInt(randomColor);
+    return randomColor;
   },
 
   setNodeTitle: function (title) {

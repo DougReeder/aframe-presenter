@@ -165,13 +165,15 @@ function parseNumber(value) {
 }
 
 function threeJsColor(color) {
-  color = new String(color).trim();
-
-  if (/^[0-9A-Fa-f]{3}$/.test(color)) {
-    return parseInt('0x'+color);
+  if (typeof color !== 'string') {
+    return color;
   }
-  if (/^[0-9A-Fa-f]{6}$/.test(color)) {
-    return parseInt('0x'+color);
+
+  color = color.trim();
+
+  if (/^[0-9A-Fa-f]{1,6}$/.test(color)) {
+    color = ("00000" + color).slice(-6);
+    return '#'+color;
   }
 
   if (/^\w+$/.test(color)) {
@@ -179,11 +181,11 @@ function threeJsColor(color) {
   }
 
   const digits = '0123456789ABCDEF';
-  let randomColor = '0x';
+  let randomColor = '#';
   for (let i = 0; i < 6; i++) {
     randomColor += digits[Math.floor(Math.random() * 16)];
   }
-  return parseInt(randomColor);
+  return randomColor;
 }
 
 function papaErrorToString(error) {
