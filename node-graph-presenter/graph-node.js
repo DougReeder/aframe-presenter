@@ -7,7 +7,7 @@ AFRAME.registerComponent('graph-node', {
     title: {default: ''},
     notes: {default: ''},
     imageUrl: {type: 'asset'},
-    pageUrl: {type: 'asset'},
+    linkUrl: {type: 'asset'},
     color: {type: 'color'},
     opacity: {default: 1.0},
     shape: {default: 'Box'},
@@ -22,7 +22,6 @@ AFRAME.registerComponent('graph-node', {
 
     this.setNodeGeometry(this.data.shape);
     this.setNodeMaterial(this.data.color);
-    this.setNodeTitle(this.data.title);
   },
 
   handlers: {},
@@ -35,8 +34,11 @@ AFRAME.registerComponent('graph-node', {
     if (this.data.color !== oldData.color) {
       this.setNodeMaterial(this.data.color);
     }
-    if (this.data.title !== oldData.title) {
+    if ((this.data.title || oldData.title) && this.data.title !== oldData.title) {
       this.setNodeTitle(this.data.title);
+    }
+    if ((this.data.linkUrl || oldData.linkUrl) && this.data.linkUrl !== oldData.linkUrl) {
+      this.setLinkChild(this.data.linkUrl);
     }
   },
 
@@ -115,6 +117,20 @@ AFRAME.registerComponent('graph-node', {
   setNodeTitle: function (title) {
     const wrapCount = 50;
     this.el.setAttribute('text', {value: title /*+ '\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n '*/, zOffset: 1, align: 'center', width: 6, /*height: 1,*/ wrapCount, side: 'double'});
+  },
+
+  setLinkChild: function (linkUrl) {
+    this.el.querySelector('a-link')?.remove();
+    if (!linkUrl) return;
+
+    const linkEl = document.createElement('a-link');
+    linkEl.object3D.position.set(0, -2.2, 0);
+    linkEl.setAttribute('href', linkUrl);
+    linkEl.setAttribute('title', ".");
+    linkEl.setAttribute('image', "https://dougreeder.github.io/elfland-glider/city/screenshot.png");
+    linkEl.setAttribute('on', 'raycaster-intersected');
+    linkEl.classList.add(PRESENTATION_CLASS);
+    this.el.appendChild(linkEl);
   },
 
   // play: function () {},

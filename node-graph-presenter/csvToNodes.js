@@ -42,7 +42,7 @@ async function csvToNodes(url, graphEl) {
 
             const el = document.createElement('a-entity');
             el.setAttribute('id', row.Uuid);
-            el.setAttribute('graph-node', {uuid: row.Uuid, title: row.Title, notes: row.Notes, imageUrl: row.ImageURL, pageUrl: row.PageURL, color: row.Color, opacity: row.Opacity, shape: row.Shape, collapsed: row.Collapsed});
+            el.setAttribute('graph-node', {uuid: row.Uuid, title: row.Title, notes: row.Notes, imageUrl: row.ImageURL, linkUrl: row.PageURL, color: row.Color, opacity: row.Opacity, shape: row.Shape, collapsed: row.Collapsed});
             el.object3D.position.set(parseNumber(row.PositionX), parseNumber(row.PositionY), parseNumber(row.PositionZ));
             // el.setAttribute('rotation', '0 45 0');
             const size = parseInt(row.Size || "5") / 50;
