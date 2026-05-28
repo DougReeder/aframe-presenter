@@ -37,6 +37,9 @@ AFRAME.registerComponent('graph-node', {
     if ((this.data.title || oldData.title) && this.data.title !== oldData.title) {
       this.setNodeTitle(this.data.title);
     }
+    if ((this.data.notes || oldData.notes) && this.data.notes !== oldData.notes ) {
+      this.setNotesChild(this.data.notes);
+    }
     if ((this.data.linkUrl || oldData.linkUrl) && this.data.linkUrl !== oldData.linkUrl) {
       this.setLinkChild(this.data.linkUrl);
     }
@@ -117,6 +120,23 @@ AFRAME.registerComponent('graph-node', {
   setNodeTitle: function (title) {
     const wrapCount = 50;
     this.el.setAttribute('text', {value: title /*+ '\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n '*/, zOffset: 1, align: 'center', width: 6, /*height: 1,*/ wrapCount, side: 'double'});
+  },
+
+  setNotesChild: function (notes) {
+    this.el.querySelector('a-text')?.remove();
+    if (!notes) return;
+
+    const textEl = document.createElement('a-text');
+    textEl.object3D.position.set(0, 1.5, 0);
+    textEl.setAttribute('value', notes);
+    textEl.setAttribute('width', 3);
+    textEl.setAttribute('anchor', 'center');
+    textEl.setAttribute('baseline', 'center');
+
+    textEl.setAttribute('geometry', 'primitive: plane; width: 0; height: 0');
+    textEl.setAttribute('material', 'color: black; opacity: 0.667');
+
+    this.el.appendChild(textEl);
   },
 
   setLinkChild: function (linkUrl) {
