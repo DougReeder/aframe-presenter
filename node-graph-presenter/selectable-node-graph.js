@@ -250,14 +250,16 @@ AFRAME.registerComponent('selectable-node-graph', {
 				}
 
 				console.log(`selectable-node-graph new elements:`, this.el.children);
-				spinner?.removeState(STATE_SPINNING);
-
 				// if (this.modelNeedsScaling) {
 					const presenterEl = document.querySelector('[presenter]')
 					presenterEl.emit('scalepresentation');
 				// }
 				this.modelNeedsScaling = false;
-			}).catch(err => this.showPersistentMsg(err, 'error'))
+			}).catch(err => {
+				this.showPersistentMsg(err, 'error')
+			}).finally(() => {
+				spinner?.removeState(STATE_SPINNING);
+			});
 		} catch (err) {
 			console.log(`selectable-node-graph update error:`, err);
 		}
