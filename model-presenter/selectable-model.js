@@ -42,6 +42,7 @@ AFRAME.registerComponent('selectable-model', {
 		controlStrip.style.gap = '0.5em';
 		controlStrip.style.rowGap = '1em';
 		document.body.appendChild(controlStrip);
+		this.controlStrip = controlStrip;
 
 		const animateLabel = document.createElement('label');
 		animateLabel.innerText = "Animate";
@@ -317,8 +318,24 @@ AFRAME.registerComponent('selectable-model', {
 
 	/** Called when a component is removed (e.g., via removeAttribute). */
 	remove: function () {
+		this.controlStrip?.remove();
+		this.fileInpt?.remove();
+		this.transientDialog?.remove();
+		this.persistentDialog?.remove();
+
+		document.removeEventListener('paste', this.handlers.drop, { capture: true });
+		this.el.sceneEl.removeEventListener('dragover', this.handlers.preventDefault);
+		this.el.sceneEl.removeEventListener('drop', this.handlers.drop);
+
 		this.el.removeEventListener('model-loaded', this.handlers.modelLoaded);
 		this.el.removeEventListener('model-error', this.handlers.modelError);
+
+		const spinner = document.getElementById(SPINNER_ID);
+		if (spinner) {
+			spinner.removeEventListener('stateadded', this.handlers.spinnerStateAdded);
+			spinner.removeEventListener('stateremoved', this.handlers.spinnerStateRemoved);
+			spinner.remove();
+		}
 	},
 
 	showTransientMsg: function (msg) {

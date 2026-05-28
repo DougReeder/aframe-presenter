@@ -27,11 +27,23 @@ AFRAME.registerComponent('graph-node', {
   handlers: {},
 
   update: function (oldData) {
-    let geometry, material;
     if (this.data.shape !== oldData.shape) {
+      if (this.el.components.geometry) {
+        this.el.getObject3D('mesh')?.geometry?.dispose?.();
+      }
       this.setNodeGeometry(this.data.shape);
     }
-    if (this.data.color !== oldData.color) {
+    if (this.data.color !== oldData.color || this.data.opacity !== oldData.opacity) {
+      if (this.el.components.material) {
+        const mesh = this.el.getObject3D('mesh');
+        if (mesh?.material) {
+          if (Array.isArray(mesh.material)) {
+            mesh.material.forEach(material => material.dispose());
+          } else {
+            mesh.material.dispose();
+          }
+        }
+      }
       this.setNodeMaterial(this.data.color);
     }
     if ((this.data.title || oldData.title) && this.data.title !== oldData.title) {
@@ -158,7 +170,19 @@ AFRAME.registerComponent('graph-node', {
   // tick: function (time, timeDelta) {},
 
   remove: function () {
+    for (const child of Array.from(this.el.children)) {
+      child.remove();
+    }
 
+    const mesh = this.el.getObject3D('mesh');
+    mesh?.geometry?.dispose();
+    if (mesh?.material) {
+      if (Array.isArray(mesh.material)) {
+        mesh.material.forEach(material => material.dispose());
+      } else {
+        mesh.material.dispose();
+      }
+    }
   },
 
 });

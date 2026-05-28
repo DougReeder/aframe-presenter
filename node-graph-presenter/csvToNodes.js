@@ -6,7 +6,7 @@ const SPIKY_FUDGE_FACTOR = 1.3;
 async function csvToNodes(url, graphEl) {
   console.debug('csvToNodes: url = ' + url);
 
-  for (const child of graphEl.children) {
+  for (const child of Array.from(graphEl.children)) {
     child.remove();
   }
   const graph = graphEl.object3D;
@@ -153,6 +153,9 @@ function disposeTree(tree) {
       }
     }
   });
+  for (let i=tree.children.length-1; i>=0; i--) {
+    tree.remove(tree.children[i]);
+  }
 }
 
 
