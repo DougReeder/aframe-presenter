@@ -251,15 +251,13 @@ AFRAME.registerComponent('selectable-node-graph', {
 			this.clearPersistentMsg();
 
 			csvToNodes(this.data.src, this.el).then(({errors, warnings, info}) => {
+				console.log(`selectable-node-graph new elements:`, this.el.children);
 				if (errors?.length > 0 || warnings?.length > 0 || info?.length > 0) {
 					this.showTransientMsg([...errors, ...warnings, ...info].join('\n'));
 				}
 
-				console.log(`selectable-node-graph new elements:`, this.el.children);
-				// if (this.modelNeedsScaling) {
-					const presenterEl = document.querySelector('[presenter]')
-					presenterEl.emit('scalepresentation');
-				// }
+				const presenterEl = document.querySelector('[presenter]')
+				presenterEl.emit('scalepresentation');
 				this.modelNeedsScaling = false;
 			}).catch(err => {
 				console.error(`csvToNodes threw`, err);
