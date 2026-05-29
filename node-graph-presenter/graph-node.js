@@ -21,7 +21,7 @@ AFRAME.registerComponent('graph-node', {
     console.debug(`graph-node init `, this.data);
 
     this.setNodeGeometry(this.data.shape);
-    this.setNodeMaterial(this.data.color);
+    this.setNodeMaterial(this.data.color, this.data.opacity, this.data.shape === 'Flat');
   },
 
   handlers: {},
@@ -44,10 +44,10 @@ AFRAME.registerComponent('graph-node', {
           }
         }
       }
-      this.setNodeMaterial(this.data.color);
+      this.setNodeMaterial(this.data.color, this.data.opacity, this.data.shape === 'Flat');
     }
     if ((this.data.title || oldData.title) && this.data.title !== oldData.title) {
-      this.setNodeTitle(this.data.title);
+      this.setNodeTitle(this.data.title, this.data.shape === 'Flat');
     }
     if ((this.data.notes || oldData.notes) && this.data.notes !== oldData.notes ) {
       this.setNotesChild(this.data.notes);
@@ -94,15 +94,22 @@ AFRAME.registerComponent('graph-node', {
       //     new THREE.Vector2(Math.sin(Math.PI / 6) * size / 2, Math.cos(Math.PI / 6) * size / 2),
       //     new THREE.Vector2(0, size)];
       //   return new THREE.LatheGeometry(starPoints, 3);
+      case 'Flat':
+        const planeLength = (Math.sin(Math.PI / 4) + 1);
+        this.el.setAttribute('geometry', {primitive: 'plane', width: 0, height: 0});   // adaps to title
+        return;
       default:
         this.el.setAttribute('geometry', {primitive: 'torusKnot' /*, radius: size, radiusTubular: 0.3*size*/});
         return;
     }
   },
 
-  setNodeMaterial: function (color) {
-    const opacity = this.data.opacity ?? 1.0;
-    this.el.setAttribute('material', {color: this.threeJsColor(color), opacity, transparent: (opacity < 1)});
+  setNodeMaterial: function (color, opacity = 1.0, isDoubleSide = false) {
+    this.el.setAttribute('material', {
+      color: this.threeJsColor(color),
+      opacity, transparent: (opacity < 1),
+      side: isDoubleSide ? 'double' : 'front'   // A-Frame constants, not Three.js constants
+    });
   },
 
   threeJsColor: function (color) {
@@ -129,9 +136,15 @@ AFRAME.registerComponent('graph-node', {
     return randomColor;
   },
 
-  setNodeTitle: function (title) {
+  setNodeTitle: function (title, isFlat = false) {
     const wrapCount = 50;
-    this.el.setAttribute('text', {value: title /*+ '\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n '*/, zOffset: 1, align: 'center', width: 6, /*height: 1,*/ wrapCount, side: 'double'});
+    this.el.setAttribute('text', {
+      value: title /*+ '\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n '*/,
+      zOffset: isFlat ? 0.001 : 1.010,
+      align: 'center',
+      width: 6, /*height: 1,*/
+      wrapCount: isFlat ? 20 : 50,
+      side: 'double'});
   },
 
   setNotesChild: function (notes) {

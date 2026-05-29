@@ -59,12 +59,12 @@ async function csvToNodes(url, graphEl) {
           } else if (row.FromUuid || row.ToUuid) {   // edge
             const fromPosition = elMap.get(row.FromUuid)?.object3D?.position;
             if (!fromPosition) {
-              warnings.push(`can't find "from" node for edge “${row.Title || row.Shape || row.ImageURL}”`);
+              warnings.push(`can't find “from” node for edge “${row.Title || row.Notes || row.Uuid}”`);
               continue;
             }
             const toPosition = elMap.get(row.ToUuid)?.object3D?.position;
             if (!toPosition) {
-              warnings.push(`can't find "to" node for edge “${row.Title || row.Shape || row.ImageURL}”`);
+              warnings.push(`can't find “to” node for edge “${row.Title || row.Notes || row.Uuid}”`);
               continue;
             }
             const points = [fromPosition, toPosition];
@@ -161,7 +161,12 @@ function disposeTree(tree) {
 
 function parseNumber(value) {
   if (typeof value === 'string') {
-    return parseFloat(value.replaceAll('.', '', 'g').replace(',', '.') || "0");
+    value = value.trim();
+    if (/-?\d+,\d+/.test(value)) {   // single comma => European format
+      return parseFloat(value.replaceAll('.', '', 'g').replace(',', '.') || "0");
+    } else {
+      return parseFloat(value);
+    }
   } else {
     return value || 0;
   }
