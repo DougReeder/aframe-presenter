@@ -193,17 +193,23 @@ AFRAME.registerComponent('selectable-model', {
 		const dataIF = this.el.sceneEl.croquetSession?.data;
 		let modelUrl;
 		if (typeof dataIF?.store === 'function' && file.size > BASE64_CROQUET_MAX) {
-			const buffer = await file.arrayBuffer();
-			const handle = await dataIF.store(buffer, {});
-			const croquetId = dataIF.toId(handle);
-			modelUrl = `multisynq:` + croquetId;
-		} else {
-			if (typeof dataIF?.store !== 'function') {
-				this.showPersistentMsg(`The Multisynq API for syncing files has changed`);
+			try {
+				const buffer = await file.arrayBuffer();
+				const handle = await dataIF.store(buffer, {});
+				const croquetId = dataIF.toId(handle);
+				modelUrl = `multisynq:` + croquetId;
+			} catch (err) {
+				this.showPersistentMsg(err);
 			}
+		} else if (typeof dataIF?.store !== 'function') {
+			this.showPersistentMsg(`The Multisynq API for syncing files has changed`);
+		}
+		if (!modelUrl) {
 			modelUrl = await fileToDataUrl(file);
 			if (modelUrl.length > 16384) {
 				this.showPersistentMsg(`“${file.name}” is too big to sync to other users; upload it somewhere and paste the URL below`);
+				modelUrl = URL.createObjectURL(file);
+				console.debug(`created object URL:`, modelUrl);
 			}
 		}
 		this.el.setAttribute('selectable-model', 'src', modelUrl);
@@ -240,14 +246,14 @@ AFRAME.registerComponent('selectable-model', {
 			this.gltfEl.setAttribute('animation-mixer', 'timeScale: ' + (this.data.animate ? 1 : 0));
 			this.animateChkbx.checked = this.data.animate;
 
-			if (!this.data.src || this.data.src === oldData.src) { return; }
+			if (!this.data.src && !oldData.src || this.data.src === oldData.src) { return; }
 
 			let spinner = document.getElementById(SPINNER_ID);
 			spinner?.addState(STATE_SPINNING);
 
-			if (this.objectUrl) {
-				URL.revokeObjectURL(this.objectUrl);
-				this.objectUrl = null;
+			if (oldData.src?.startsWith?.('blob:')) {
+				URL.revokeObjectURL(oldData.src);
+				console.debug(`revoked object URL:`, oldData.src);
 			}
 
 			let modelUrl = this.data.src;
@@ -273,6 +279,11 @@ AFRAME.registerComponent('selectable-model', {
 	},
 
 	modelLoaded: function () {
+		if (this.objectUrl) {
+			URL.revokeObjectURL(this.objectUrl);
+			this.objectUrl = null;
+		}
+
 		if (this.modelNeedsScaling) {
 			const presenterEl = document.querySelector('[presenter]')
 			presenterEl.emit('scalepresentation');

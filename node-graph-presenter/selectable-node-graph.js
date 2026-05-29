@@ -189,6 +189,8 @@ AFRAME.registerComponent('selectable-node-graph', {
 			csvUrl = await fileToDataUrl(file);
 			if (csvUrl.length > 16384) {
 				this.showPersistentMsg(`“${file.name}” is too big to sync to other users; upload it somewhere and paste the URL below`, 'warn');
+				csvUrl = URL.createObjectURL(file);
+				console.debug(`created object URL:`, csvUrl);
 			}
 		}
 		this.el.setAttribute('selectable-node-graph', 'src', csvUrl);
@@ -222,9 +224,9 @@ AFRAME.registerComponent('selectable-node-graph', {
 			const spinner = document.getElementById(SPINNER_ID);
 			spinner?.addState(STATE_SPINNING);
 
-			if (this.objectUrl) {
-				URL.revokeObjectURL(this.objectUrl);
-				this.objectUrl = null;
+			if (oldData.src?.startsWith?.('blob:')) {
+				URL.revokeObjectURL(oldData.src);
+				console.debug(`revoked object URL:`, oldData.src);
 			}
 
 			let csvUrl = this.data.src;
@@ -262,6 +264,10 @@ AFRAME.registerComponent('selectable-node-graph', {
 			}).catch(err => {
 				this.showPersistentMsg(err, 'error')
 			}).finally(() => {
+				if (this.objectUrl) {
+					URL.revokeObjectURL(this.objectUrl);
+					this.objectUrl = null;
+				}
 				spinner?.removeState(STATE_SPINNING);
 			});
 		} catch (err) {
