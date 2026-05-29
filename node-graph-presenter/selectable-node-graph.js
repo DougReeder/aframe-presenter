@@ -70,6 +70,7 @@ AFRAME.registerComponent('selectable-node-graph', {
 		urlInput.style.paddingLeft = '1em';
 		urlControls.appendChild(urlInput);
 		urlInput.addEventListener('change', this.handlers.openUrl);
+		this.urlInput = urlInput;
 
 		const openUrlBtn = document.createElement('button');
 		openFileBtn.style.minHeight = '40px';
@@ -114,6 +115,7 @@ AFRAME.registerComponent('selectable-node-graph', {
 			this.el.setAttribute('selectable-node-graph', 'src', value);
 			this.csvNeedsScaling = true;
 		} else if (value?.length > 0) {
+			this.urlInput.value = '';
 			this.showTransientMsg(`“${value}” is not a URL`, 'error');
 		}
 	},
@@ -191,6 +193,7 @@ AFRAME.registerComponent('selectable-node-graph', {
 		}
 		this.el.setAttribute('selectable-node-graph', 'src', csvUrl);
 		this.csvNeedsScaling = true;
+		this.urlInput.value = '';   // we're definitely loading a file
 
 		function fileToDataUrl(file) {
 			return new Promise((resolve, reject) => {
@@ -212,6 +215,7 @@ AFRAME.registerComponent('selectable-node-graph', {
 	update: async function (oldData) {
 		try {
 			console.debug(`selectable-node-graph update:`, this.data, oldData);
+			this.fileInpt.value = '';
 
 				if (!this.data.src && !oldData.src || this.data.src === oldData.src) { return; }
 
@@ -314,6 +318,7 @@ AFRAME.registerComponent('selectable-node-graph', {
 	remove: function () {
 		this.controlStrip?.remove();
 		this.fileInpt?.remove();
+		this.urlInput?.remove();
 		this.transientDialog?.remove();
 		this.persistentDialog?.remove();
 

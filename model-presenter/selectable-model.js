@@ -89,6 +89,7 @@ AFRAME.registerComponent('selectable-model', {
 		urlInput.style.paddingLeft = '1em';
 		urlControls.appendChild(urlInput);
 		urlInput.addEventListener('change', this.handlers.openUrl);
+		this.urlInput = urlInput;
 
 		const openUrlBtn = document.createElement('button');
 		openFileBtn.style.minHeight = '40px';
@@ -133,6 +134,7 @@ AFRAME.registerComponent('selectable-model', {
 			this.el.setAttribute('selectable-model', 'src', value);
 			this.modelNeedsScaling = true;
 		} else if (value?.length > 0) {
+			this.urlInput.value = '';
 			this.showTransientMsg(`“${value}” is not a URL`);
 		}
 	},
@@ -206,6 +208,7 @@ AFRAME.registerComponent('selectable-model', {
 		}
 		this.el.setAttribute('selectable-model', 'src', modelUrl);
 		this.modelNeedsScaling = true;
+		this.urlInput.value = '';   // we're definitely loading a file
 
 		function fileToDataUrl(file) {
 			return new Promise((resolve, reject) => {
@@ -226,6 +229,8 @@ AFRAME.registerComponent('selectable-model', {
 	/** Called when properties are changed, incl. right after init */
 	update: async function (oldData) {
 		try {
+			this.fileInpt.value = '';
+
 			if (!this.gltfEl) {
 				this.gltfEl = document.createElement('a-gltf-model');
 				this.gltfEl.classList.add(PRESENTATION_CLASS);
@@ -320,6 +325,7 @@ AFRAME.registerComponent('selectable-model', {
 	remove: function () {
 		this.controlStrip?.remove();
 		this.fileInpt?.remove();
+		this.urlInput?.remove();
 		this.transientDialog?.remove();
 		this.persistentDialog?.remove();
 
