@@ -27,7 +27,8 @@ async function csvToNodes(url, graphEl) {
       skipEmptyLines: 'greedy',
       complete: function(result) {
         if (!result || typeof result !== "object" ) {
-          reject(new Error('Papa Parse result not object'));   // can't be certain it's already rejected
+          console.error('Papa Parse result not object:', result);
+          // reject(new Error('Papa Parse result not object'));   // can't be certain it's already rejected
           return;
         }
         const {data = [], errors: parseErrors = [], meta = {}} = result;
@@ -98,8 +99,12 @@ async function csvToNodes(url, graphEl) {
         resolve();
       },
       error: function(err, file) {
-        console.error('Papa Parse file error:', err, file, url);
-        reject(err);
+        if (url?.startsWith('data:') && (!err.message || /network/i.test(err.message))) {
+          console.log('Papa Parse file error:', err, file, url);
+        } else {
+          console.error('Papa Parse file error:', err, file, url);
+          reject(err);
+        }
       }
     });
   });
