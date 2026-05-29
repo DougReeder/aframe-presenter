@@ -33,9 +33,12 @@ async function csvToNodes(url, graphEl) {
         const {data = [], errors: parseErrors = [], meta = {}} = result;
 
         if (meta.aborted) {
+          console.error('Papa Parse aborted');
           errors.push('Parsing aborted');
         }
+        console.log('Papa Parse result:', result);
 
+        let numNodes = 0, numEdges = 0;
         for (let row of data) {
           if (row.PositionX || row.PositionY || row.PositionZ) {   // node
             if (!row.Uuid) continue;
@@ -56,14 +59,17 @@ async function csvToNodes(url, graphEl) {
               warnings.push(`duplicate node UUID "${row.Uuid}"`);
             }
             elMap.set(row.Uuid, el);
+            ++numNodes;
           } else if (row.FromUuid || row.ToUuid) {   // edge
             const fromPosition = elMap.get(row.FromUuid)?.object3D?.position;
             if (!fromPosition) {
+              console.warn(`can't find “from” node for edge “${row.Title || row.Notes || row.Uuid}”`);
               warnings.push(`can't find “from” node for edge “${row.Title || row.Notes || row.Uuid}”`);
               continue;
             }
             const toPosition = elMap.get(row.ToUuid)?.object3D?.position;
             if (!toPosition) {
+              console.warn(`can't find “to” node for edge “${row.Title || row.Notes || row.Uuid}”`);
               warnings.push(`can't find “to” node for edge “${row.Title || row.Notes || row.Uuid}”`);
               continue;
             }
@@ -73,10 +79,13 @@ async function csvToNodes(url, graphEl) {
             const object = new THREE.Line(geometry, material);
             if (row.Title) {object.name = row.Title}
             graph.add(object);
+            ++numEdges;
           } else {
+            console.warn(`unknown thing “${row.Title || row.Shape || row.ImageURL}”`);
             warnings.push(`unknown thing “${row.Title || row.Shape || row.ImageURL}”`);
           }
         }
+        info.push(`Parsed ${data.length} rows; added ${numNodes} nodes and ${numEdges} edges`);
         for (let error of parseErrors) {
           switch (error.code) {
             case 'TooManyFields':
@@ -89,7 +98,7 @@ async function csvToNodes(url, graphEl) {
         resolve();
       },
       error: function(err, file) {
-        console.error('Papa Parse file error:', err, file);
+        console.error('Papa Parse file error:', err, file, url);
         reject(err);
       }
     });

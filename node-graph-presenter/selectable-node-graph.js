@@ -116,7 +116,8 @@ AFRAME.registerComponent('selectable-node-graph', {
 			this.csvNeedsScaling = true;
 		} else if (value?.length > 0) {
 			this.urlInput.value = '';
-			this.showTransientMsg(`“${value}” is not a URL`, 'error');
+			console.warn(`“${value}” is not a URL`);
+			this.showTransientMsg(`“${value}” is not a URL`);
 		}
 	},
 
@@ -136,6 +137,7 @@ AFRAME.registerComponent('selectable-node-graph', {
 
 			await this.syncCsv(this.fileInpt.files[0]);
 		} catch (err) {
+			console.error(`fileInptChange:`, err);
 			this.showPersistentMsg(err);
 		}
 	},
@@ -163,10 +165,12 @@ AFRAME.registerComponent('selectable-node-graph', {
 			if ('drop' === evt.type || 'INPUT' !== evt.target.tagName) {
 				evt.stopPropagation();
 				evt.preventDefault();
+				console.info(`Only a Noda .CSV file can be ${'paste' === evt.type ? "pasted" : "dropped"} here`);
 				this.showTransientMsg(`Only a Noda .CSV file can be ${'paste' === evt.type ? "pasted" : "dropped"} here`);
 			}
 		} catch (err) {
-			this.showPersistentMsg(err, 'error');
+			console.error(`drop:`, err);
+			this.showPersistentMsg(err);
 		}
 	},
 
@@ -180,15 +184,18 @@ AFRAME.registerComponent('selectable-node-graph', {
 				const croquetId = dataIF.toId(handle);
 				csvUrl = `multisynq:` + croquetId;
 			} catch (err) {
-				this.showPersistentMsg(err, 'error');
+				console.error(`syncCsv:`, err);
+				this.showPersistentMsg(err);
 			}
 		} else if (typeof dataIF?.store !== 'function') {
-			this.showPersistentMsg(`The Multisynq API for syncing files has changed`, 'warn');
+			console.warn(`syncCsv typeof dataIF?.store:`, typeof dataIF?.store, file.size);
+			this.showPersistentMsg(`The Multisynq API for syncing files has changed`);
 		}
 		if (!csvUrl) {
 			csvUrl = await fileToDataUrl(file);
 			if (csvUrl.length > 16384) {
-				this.showPersistentMsg(`“${file.name}” is too big to sync to other users; upload it somewhere and paste the URL below`, 'warn');
+				console.warn(`${file.name} csvUrl.length ${csvUrl.length} > 16384`);
+				this.showPersistentMsg(`“${file.name}” is too big to sync to other users; upload it somewhere and paste the URL below`);
 				csvUrl = URL.createObjectURL(file);
 				console.debug(`created object URL:`, csvUrl);
 			}
@@ -244,15 +251,8 @@ AFRAME.registerComponent('selectable-node-graph', {
 			this.clearPersistentMsg();
 
 			csvToNodes(this.data.src, this.el).then(({errors, warnings, info}) => {
-				if (errors?.length > 0) {
-					this.showTransientMsg( errors.join('\n'), 'error')
-					if (warnings?.length > 0) { console.warn(warnings.join('\n')); }
-					if (info?.length > 0) { console.info(info.join('\n')); }
-				} else if (warnings?.length > 0) {
-					this.showTransientMsg( warnings.join('\n'), 'warn')
-					if (info?.length > 0) { console.info(info.join('\n')); }
-				} else if (info?.length > 0) {
-					this.showTransientMsg( info.join('\n'), 'info')
+				if (errors?.length > 0 || warnings?.length > 0 || info?.length > 0) {
+					this.showTransientMsg([...errors, ...warnings, ...info].join('\n'));
 				}
 
 				console.log(`selectable-node-graph new elements:`, this.el.children);
@@ -262,7 +262,8 @@ AFRAME.registerComponent('selectable-node-graph', {
 				// }
 				this.modelNeedsScaling = false;
 			}).catch(err => {
-				this.showPersistentMsg(err, 'error')
+				console.error(`csvToNodes threw`, err);
+				this.showPersistentMsg(err);
 			}).finally(() => {
 				if (this.objectUrl) {
 					URL.revokeObjectURL(this.objectUrl);
@@ -289,11 +290,12 @@ AFRAME.registerComponent('selectable-node-graph', {
 	csvError: function (evt) {
 		console.error(`selectable-node-graph csvError:`, evt.detail);
 		const format = 'Noda .CSV'
-		// const format = 'gltf' === evt.detail?.format ? '.CSV' : evt.detail?.format;
+		// const format = 'gltf' === evt.detail?.format ? '.CSV' : evt.detail?.format;q
 		const msg = format ?
 			`Not a valid ${format?.toUpperCase?.()} file` :
 			`Error while loading file: ` + JSON.stringify(evt.detail);
-		this.showPersistentMsg(msg, 'error');
+		console.error(msg);
+		this.showPersistentMsg(msg);
 
 		const spinner = document.getElementById(SPINNER_ID);
 		spinner?.removeState(STATE_SPINNING);
@@ -343,24 +345,7 @@ AFRAME.registerComponent('selectable-node-graph', {
 		}
 	},
 
-	showTransientMsg: function (msg, status = 'info') {
-		switch (status) {
-			case 'debug':
-				console.debug(msg);
-				break;
-			case 'info':
-				console.info(msg);
-				break;
-			case 'warn':
-				console.warn(msg);
-				break;
-			case 'error':
-				console.error(msg);
-				break;
-			default:
-				console.log(msg);
-		}
-
+	showTransientMsg: function (msg) {
 		if (msg instanceof Error) {
 			msg = msg.message || msg.name || msg?.toString();
 		}
@@ -384,24 +369,7 @@ AFRAME.registerComponent('selectable-node-graph', {
 		}, 100);
 	},
 
-	showPersistentMsg: function (msg, status = 'info') {
-		switch (status) {
-			case 'debug':
-				console.debug(msg);
-				break;
-			case 'info':
-				console.info(msg);
-				break;
-			case 'warn':
-				console.warn(msg);
-				break;
-			case 'error':
-				console.error(msg);
-				break;
-			default:
-				console.log(msg);
-		}
-
+	showPersistentMsg: function (msg) {
 		if (msg instanceof Error) {
 			msg = msg.message || msg.name || msg?.toString();
 		}
