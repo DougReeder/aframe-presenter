@@ -1,5 +1,5 @@
 describe('csvToNodes', function() {
-    let graphEl;
+    let graphEl, blobUrl;
 
     beforeEach(function() {
         graphEl = document.createElement('a-entity');
@@ -7,16 +7,17 @@ describe('csvToNodes', function() {
     });
 
     afterEach(function() {
+        URL.revokeObjectURL(blobUrl);
         document.querySelector('a-scene').removeChild(graphEl);
     });
 
-    it('should parse a simple Noda CSV with one node', async function() {
+    it('should parse a simple Noda CSV with one Ball node', async function() {
         const csvData = 'Uuid,Title,PositionX,PositionY,PositionZ,Color,Size,Shape\n' +
                         'node1,Test Node,1,2,3,ff0000,5,Ball';
         const blob = new Blob([csvData], { type: 'text/csv' });
-        const url = URL.createObjectURL(blob);
+        blobUrl = URL.createObjectURL(blob);
 
-        const result = await csvToNodes(url, 'NODA', graphEl);
+        const result = await csvToNodes(blobUrl, 'NODA', graphEl);
 
         expect(result.errors).to.be.empty;
         expect(result.warnings).to.be.empty;
@@ -30,6 +31,8 @@ describe('csvToNodes', function() {
         expect(nodeEl.object3D.position.z).to.equal(3);
         expect(nodeEl.object3D.scale.x).to.equal(0.1);   // default
         expect(nodeEl.object3D.userData?.id).to.equal('node1');
+        expect(nodeEl.getObject3D('mesh').geometry).to.have.property('type', 'SphereGeometry');
+        expect(nodeEl.getObject3D('mesh').geometry.parameters).to.have.property('radius', 1);
 
         const graphNodeAttr = nodeEl.getAttribute('graph-node');
         expect(graphNodeAttr.title).to.equal('Test Node');
@@ -41,15 +44,84 @@ describe('csvToNodes', function() {
         expect(graphNodeAttr.linkUrl).to.equal('');
     });
 
+    it('should parse a simple Noda CSV with one Diamond node w/ notes, ImageURL & PageURL', async function() {
+        const csvData = 'Uuid,Title,Notes,ImageURL,PageURL,PositionX,PositionY,PositionZ,Color,Size,Shape\n' +
+            'diamondNode,Diamond Node,some pig,https://example.com/pic,https://example.org/page,10,20,30,808080,6,Diamond';
+        const blob = new Blob([csvData], { type: 'text/csv' });
+        blobUrl = URL.createObjectURL(blob);
+
+        const result = await csvToNodes(blobUrl, 'NODA', graphEl);
+
+        expect(result.errors).to.be.empty;
+        expect(result.warnings).to.be.empty;
+        expect(result.info.length).to.equal(1);
+
+        const nodeEl = graphEl.children[0];
+        expect(nodeEl.getAttribute('id')).to.equal('diamondNode');
+        expect(nodeEl.object3D.position.x).to.equal(10);
+        expect(nodeEl.object3D.position.y).to.equal(20);
+        expect(nodeEl.object3D.position.z).to.equal(30);
+        expect(nodeEl.object3D.scale.x).to.equal(0.12);
+        expect(nodeEl.object3D.userData?.id).to.equal('diamondNode');
+        expect(nodeEl.getObject3D('mesh').geometry).to.have.property('type', 'OctahedronGeometry');
+        expect(nodeEl.getObject3D('mesh').geometry.parameters).to.have.property('radius', 1.1);
+
+        const graphNodeAttr = nodeEl.getAttribute('graph-node');
+        expect(graphNodeAttr.title).to.equal('Diamond Node');
+        expect(graphNodeAttr.notes).to.equal('some pig');
+        expect(graphNodeAttr.color).to.equal('808080');
+        expect(graphNodeAttr.opacity).to.equal(1.0);
+        expect(graphNodeAttr.shape).to.equal('Diamond');
+        expect(graphNodeAttr.imageUrl).to.equal('https://example.com/pic');
+        expect(graphNodeAttr.linkUrl).to.equal('https://example.org/page');
+
+        expect(graphEl.children.length).to.equal(1);
+    });
+
+    it('should parse a simple Noda CSV with one Flat node w/ undefined X & Y', async function() {
+        const csvData = 'Uuid,Title,Notes,ImageURL,PageURL,PositionX,PositionY,PositionZ,Color,Size,Shape\n' +
+            'flatNode,Flat Node,,,,,,69,,,Flat';
+        const blob = new Blob([csvData], { type: 'text/csv' });
+        blobUrl = URL.createObjectURL(blob);
+
+        const result = await csvToNodes(blobUrl, 'NODA', graphEl);
+
+        expect(result.errors).to.be.empty;
+        expect(result.warnings).to.be.empty;
+        expect(result.info.length).to.equal(1);
+
+        const nodeEl = graphEl.children[0];
+        expect(nodeEl.getAttribute('id')).to.equal('flatNode');
+        expect(nodeEl.object3D.position.x).to.be.NaN;
+        expect(nodeEl.object3D.position.y).to.be.NaN;
+        expect(nodeEl.object3D.position.z).to.equal(69);
+        expect(nodeEl.object3D.scale.x).to.equal(0.10);   // default
+        expect(nodeEl.object3D.userData?.id).to.equal('flatNode');
+        expect(nodeEl.getObject3D('mesh').geometry).to.have.property('type', 'PlaneGeometry');
+        expect(nodeEl.getObject3D('mesh').geometry.parameters).to.have.property('width', 0);
+        expect(nodeEl.getObject3D('mesh').geometry.parameters).to.have.property('height', 0);
+
+        const graphNodeAttr = nodeEl.getAttribute('graph-node');
+        expect(graphNodeAttr.title).to.equal('Flat Node');
+        expect(graphNodeAttr.notes).to.equal('');
+        expect(graphNodeAttr.color).to.equal('#FFF');
+        expect(graphNodeAttr.opacity).to.equal(1.0);
+        expect(graphNodeAttr.shape).to.equal('Flat');
+        expect(graphNodeAttr.imageUrl).to.equal('');
+        expect(graphNodeAttr.linkUrl).to.equal('');
+
+        expect(graphEl.children.length).to.equal(1);
+    });
+
     it('should parse a Noda CSV with nodes and edges', async function() {
         const csvData = 'Uuid,Title,PositionX,PositionY,PositionZ,FromUuid,ToUuid\n' +
                         'n1,Node 1,1,1,1,,\n' +
                         'n2,Node 2,2,2,2,,\n' +
                         'e1,Edge 1,,,,n1,n2';
         const blob = new Blob([csvData], { type: 'text/csv' });
-        const url = URL.createObjectURL(blob);
+        blobUrl = URL.createObjectURL(blob);
 
-        const result = await csvToNodes(url, 'NODA', graphEl);
+        const result = await csvToNodes(blobUrl, 'NODA', graphEl);
 
         expect(result.errors).to.be.empty;
         expect(result.warnings).to.be.empty;
@@ -82,9 +154,9 @@ describe('csvToNodes', function() {
             'n2,Node 2,2,2,2,,\n' +
             'e1,Edge 1,,,,nonexistent1,n2';
         const blob = new Blob([csvData], { type: 'text/csv' });
-        const url = URL.createObjectURL(blob);
+        blobUrl = URL.createObjectURL(blob);
 
-        const result = await csvToNodes(url, 'NODA', graphEl);
+        const result = await csvToNodes(blobUrl, 'NODA', graphEl);
 
         expect(result.errors).to.be.empty;
         expect(result.warnings.length).to.be.greaterThan(0);
@@ -102,9 +174,9 @@ describe('csvToNodes', function() {
             'n2,Node 2,2,2,2,,\n' +
             'e1,Edge 1,,,,n1,nonexistent2';
         const blob = new Blob([csvData], { type: 'text/csv' });
-        const url = URL.createObjectURL(blob);
+        blobUrl = URL.createObjectURL(blob);
 
-        const result = await csvToNodes(url, 'NODA', graphEl);
+        const result = await csvToNodes(blobUrl, 'NODA', graphEl);
 
         expect(result.errors).to.be.empty;
         expect(result.warnings.length).to.be.greaterThan(0);
@@ -120,9 +192,9 @@ describe('csvToNodes', function() {
         const csvData = 'Uuid,Title,PositionX,PositionY,PositionZ,FromUuid,ToUuid\n' +
             'e1,Edge 1,,,,nonexistent1,nonexistent2';
         const blob = new Blob([csvData], { type: 'text/csv' });
-        const url = URL.createObjectURL(blob);
+        blobUrl = URL.createObjectURL(blob);
 
-        const result = await csvToNodes(url, 'NODA', graphEl);
+        const result = await csvToNodes(blobUrl, 'NODA', graphEl);
 
         expect(result.errors).to.be.empty;
         expect(result.warnings.length).to.be.greaterThan(0);
