@@ -13,6 +13,7 @@ AFRAME.registerComponent('selectable-node-graph', {
 
 	schema: {
 		src: {type: 'asset'},
+		flavorCsv: {default: 'NODA'},
 	},
 
 	/** Called once when component is attached. Generally for initial setup. */
@@ -244,7 +245,7 @@ AFRAME.registerComponent('selectable-node-graph', {
 			console.log(`selectable-node-graph update graph src: “${graphUrl}”`)
 			this.clearPersistentMsg();
 
-			csvToNodes(graphUrl, this.el).then(({errors, warnings, info}) => {
+			csvToNodes(graphUrl, this.data.flavorCsv, this.el).then(({errors, warnings, info}) => {
 				console.log(`selectable-node-graph new elements:`, this.el.children);
 				if (errors?.length > 0 || warnings?.length > 0 || info?.length > 0) {
 					this.showTransientMsg([...errors, ...warnings, ...info].join('\n'));

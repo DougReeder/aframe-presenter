@@ -3,7 +3,7 @@
 
 const SPIKY_FUDGE_FACTOR = 1.3;
 
-async function csvToNodes(url, graphEl) {
+async function csvToNodes(url, flavorCsv, graphEl) {
   console.debug('csvToNodes: url = ' + url);
 
   for (const child of Array.from(graphEl.children)) {
@@ -41,37 +41,41 @@ async function csvToNodes(url, graphEl) {
 
         let numNodes = 0, numEdges = 0;
         for (let row of data) {
+          // the flavorCsv determines what fields of row to read
+          const id = row.Uuid;
           if (row.PositionX || row.PositionY || row.PositionZ) {   // node
-            if (!row.Uuid) continue;
+            if (!id) {
+              info.push(`node “${row.Title || row.Notes}” has no ID`);
+            }
 
             const el = document.createElement('a-entity');
-            el.setAttribute('id', row.Uuid);
-            el.setAttribute('graph-node', {uuid: row.Uuid, title: row.Title, notes: row.Notes, imageUrl: row.ImageURL, linkUrl: row.PageURL, color: row.Color, opacity: row.Opacity, shape: row.Shape, collapsed: row.Collapsed});
+            el.setAttribute('id', id);
+            el.setAttribute('graph-node', {id: id, title: row.Title, notes: row.Notes, imageUrl: row.ImageURL, linkUrl: row.PageURL, color: row.Color, opacity: row.Opacity, shape: row.Shape, collapsed: row.Collapsed});
             el.object3D.position.set(parseNumber(row.PositionX), parseNumber(row.PositionY), parseNumber(row.PositionZ));
             // el.setAttribute('rotation', '0 45 0');
             const size = parseInt(row.Size || "5") / 50;
             el.object3D.scale.set(size, size, size);
-            // el.setAttribute('link', 'href:../island/; title:Elfland; image:../island/screenshot.png; on:hitstart; visualAspectEnabled:true');
-            el.object3D.userData.uuid = row.Uuid;
+            el.object3D.userData.id = id;
             el.classList.add(PRESENTATION_CLASS);
             graphEl.appendChild(el);
 
-            if (elMap.has(row.Uuid)) {
-              warnings.push(`duplicate node UUID "${row.Uuid}"`);
+            if (elMap.has(id)) {
+              warnings.push(`duplicate node ID "${id}"`);
             }
-            elMap.set(row.Uuid, el);
+            // edges refer to the _most recently_ defined node with the given ID
+            elMap.set(id, el);
             ++numNodes;
           } else if (row.FromUuid || row.ToUuid) {   // edge
             const fromPosition = elMap.get(row.FromUuid)?.object3D?.position;
             if (!fromPosition) {
-              console.warn(`can't find “from” node for edge “${row.Title || row.Notes || row.Uuid}”`);
-              warnings.push(`can't find “from” node for edge “${row.Title || row.Notes || row.Uuid}”`);
+              console.warn(`can't find “from” node for edge “${row.Title || row.Notes || id}”`);
+              warnings.push(`can't find “from” node for edge “${row.Title || row.Notes || id}”`);
               continue;
             }
             const toPosition = elMap.get(row.ToUuid)?.object3D?.position;
             if (!toPosition) {
-              console.warn(`can't find “to” node for edge “${row.Title || row.Notes || row.Uuid}”`);
-              warnings.push(`can't find “to” node for edge “${row.Title || row.Notes || row.Uuid}”`);
+              console.warn(`can't find “to” node for edge “${row.Title || row.Notes || id}”`);
+              warnings.push(`can't find “to” node for edge “${row.Title || row.Notes || id}”`);
               continue;
             }
             const points = [fromPosition, toPosition];

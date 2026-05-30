@@ -3,7 +3,7 @@
 
 AFRAME.registerComponent('graph-node', {
   schema: {
-    uuid: {default: ''},
+    id: {default: ''},
     title: {default: ''},
     notes: {default: ''},
     imageUrl: {type: 'asset'},
