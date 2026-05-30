@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Mocha Tests</title>
+    <link rel="stylesheet" href="https://unpkg.com/mocha@11.1.0/mocha.css">
+    <script src="https://aframe.io/releases/1.7.1/aframe.min.js"></script>
+    <script src="https://unpkg.com/papaparse@5.5.3/papaparse.min.js"></script>
+    <script>
+        // Define missing globals that csvToNodes.js expects
+        window.PRESENTATION_CLASS = 'presentation';
+    </script>
+    <script src="../node-graph-presenter/graph-node.js"></script>
+    <script src="../node-graph-presenter/csvToNodes.js"></script>
+</head>
+<body>
+    <div id="mocha"></div>
+    <a-scene style="display: none"></a-scene>
+    <script src="https://unpkg.com/mocha@11.1.0/mocha.js"></script>
+    <script src="https://unpkg.com/chai@4.3.4/chai.js"></script>
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('grep')) {
+            mocha.setup({
+                ui: 'bdd',
+                timeout: 0
+            });
+        } else {
+            mocha.setup('bdd');
+        }
+        window.expect = chai.expect;
+    </script>
+    <script src="/tests/csvToNodes.test.js"></script>
+    <script>
+        const runner = mocha.run();
+        window.mochaResults = {
+            passes: 0,
+            failures: 0
+        };
+        runner.on('pass', (test) => {
+            console.log(`PASS: ${test.fullTitle()}`);
+            window.mochaResults.passes++;
+        });
+        runner.on('fail', (test, err) => {
+            console.log(`FAIL: ${test.fullTitle()} - ${err.message}`);
+            window.mochaResults.failures++;
+        });
+        runner.on('end', () => {
+            window.mochaResults.completed = true;
+        });
+    </script>
+</body>
+</html>
