@@ -22,8 +22,6 @@ AFRAME.registerComponent('selectable-node-graph', {
 		this.handlers.fileInptChange = this.fileInptChange.bind(this);
 		this.handlers.preventDefault = (evt => { evt.preventDefault(); }).bind(this);
 		this.handlers.drop = this.drop.bind(this);
-		this.handlers.csvLoaded = this.csvLoaded.bind(this);
-		this.handlers.csvError = this.csvError.bind(this);
 		this.handlers.spinnerStateAdded = this.spinnerStateAdded.bind(this);
 		this.handlers.spinnerStateRemoved = this.spinnerStateRemoved.bind(this);
 
@@ -81,9 +79,6 @@ AFRAME.registerComponent('selectable-node-graph', {
 		document.addEventListener('paste', this.handlers.drop, { capture: true });
 		this.el.sceneEl.addEventListener('dragover', this.handlers.preventDefault);   // prevents default to allow drop
 		this.el.sceneEl.addEventListener('drop', this.handlers.drop);
-
-		this.el.addEventListener('csv-loaded', this.handlers.csvLoaded);
-		this.el.addEventListener('csv-error', this.handlers.csvError);
 
 		const spinner = document.createElement('a-gltf-model');
 		spinner.setAttribute('id', SPINNER_ID);
@@ -274,31 +269,6 @@ AFRAME.registerComponent('selectable-node-graph', {
 		}
 	},
 
-	csvLoaded: function () {
-		if (this.csvNeedsScaling) {
-			const presenterEl = document.querySelector('[presenter]')
-			presenterEl.emit('scalepresentation');
-		}
-		this.csvNeedsScaling = false;
-
-		const spinner = document.getElementById(SPINNER_ID);
-		spinner?.removeState(STATE_SPINNING);
-	},
-
-	csvError: function (evt) {
-		console.error(`selectable-node-graph csvError:`, evt.detail);
-		const format = 'Noda .CSV'
-		// const format = 'gltf' === evt.detail?.format ? '.CSV' : evt.detail?.format;q
-		const msg = format ?
-			`Not a valid ${format?.toUpperCase?.()} file` :
-			`Error while loading file: ` + JSON.stringify(evt.detail);
-		console.error(msg);
-		this.showPersistentMsg(msg);
-
-		const spinner = document.getElementById(SPINNER_ID);
-		spinner?.removeState(STATE_SPINNING);
-	},
-
 	spinnerStateAdded: function(evt) {
 		if (STATE_SPINNING === evt.detail) {
 			const spinner = document.getElementById(SPINNER_ID);
@@ -331,9 +301,6 @@ AFRAME.registerComponent('selectable-node-graph', {
 		document.removeEventListener('paste', this.handlers.drop, { capture: true });
 		this.el.sceneEl.removeEventListener('dragover', this.handlers.preventDefault);
 		this.el.sceneEl.removeEventListener('drop', this.handlers.drop);
-
-		this.el.removeEventListener('csv-loaded', this.handlers.csvLoaded);
-		this.el.removeEventListener('csv-error', this.handlers.csvError);
 
 		const spinner = document.getElementById(SPINNER_ID);
 		if (spinner) {
