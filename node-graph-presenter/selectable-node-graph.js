@@ -17,10 +17,11 @@ AFRAME.registerComponent('selectable-node-graph', {
 
 	/** Called once when component is attached. Generally for initial setup. */
 	init: function () {
+		this.handlers = {};
 		this.handlers.openUrl = this.openUrl.bind(this);
 		this.handlers.openGraphFile = this.openGraphFile.bind(this);
 		this.handlers.fileInptChange = this.fileInptChange.bind(this);
-		this.handlers.preventDefault = (evt => { evt.preventDefault(); }).bind(this);
+		this.handlers.preventDefault = evt => { evt.preventDefault(); evt.stopPropagation(); };
 		this.handlers.drop = this.drop.bind(this);
 		this.handlers.spinnerStateAdded = this.spinnerStateAdded.bind(this);
 		this.handlers.spinnerStateRemoved = this.spinnerStateRemoved.bind(this);
@@ -32,7 +33,7 @@ AFRAME.registerComponent('selectable-node-graph', {
 		controlStrip.style.bottom = '1em';
 		controlStrip.style.display = 'flex';
 		controlStrip.style.flexWrap = 'wrap';
-		controlStrip.style.justifyContent = 'flex-start'
+		controlStrip.style.justifyContent = 'flex-start';
 		controlStrip.style.alignItems = 'stretch';
 		controlStrip.style.gap = '0.5em';
 		controlStrip.style.rowGap = '1em';
@@ -71,7 +72,7 @@ AFRAME.registerComponent('selectable-node-graph', {
 		this.urlInput = urlInput;
 
 		const openUrlBtn = document.createElement('button');
-		openFileBtn.style.minHeight = '40px';
+		openUrlBtn.style.minHeight = '40px';
 		openUrlBtn.innerText = "Fetch Noda CSV from URL";
 		urlControls.appendChild(openUrlBtn);
 		openUrlBtn.addEventListener('click', this.handlers.openUrl);
@@ -100,10 +101,8 @@ AFRAME.registerComponent('selectable-node-graph', {
 		spinner?.addState(STATE_SPINNING);   // marks where node graph will be placed
 	},
 
-	handlers: {},
-
 	openUrl: function (evt) {
-		const value = document.querySelector('input[type=url]')?.value?.trim();
+		const value = this.urlInput?.value?.trim();
 		console.debug(`openUrl`, evt, `“${value}”`);
 		const url = URL.parse(value);
 		if (['https:', 'http:', 'ftp:', 'ftps:', 'sftp:', 'file:', 'data:', 'news:'].includes(url?.protocol)) {
@@ -139,7 +138,7 @@ AFRAME.registerComponent('selectable-node-graph', {
 
 	drop: async function (evt) {
 		try {
-			const files = evt.clipboardData?.files ?? evt.dataTransfer?.files;
+			const files = evt.clipboardData?.files ?? evt.dataTransfer?.files ?? [];
 			console.debug(`selectable-node-graph ${evt.type}:`, evt.target, files);
 
 			let i = 0;
