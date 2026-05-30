@@ -76,9 +76,49 @@ describe('csvToNodes', function() {
         expect(positions[5]).to.equal(2);
     });
 
-    it('should handle missing nodes for edges with a warning', async function() {
+    it('should not create edge missing "from" node, and warn', async function() {
         const csvData = 'Uuid,Title,PositionX,PositionY,PositionZ,FromUuid,ToUuid\n' +
-                        'e1,Edge 1,,,,,nonexistent1,nonexistent2';
+            'n1,Node 1,1,1,1,,\n' +
+            'n2,Node 2,2,2,2,,\n' +
+            'e1,Edge 1,,,,nonexistent1,n2';
+        const blob = new Blob([csvData], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+
+        const result = await csvToNodes(url, 'NODA', graphEl);
+
+        expect(result.errors).to.be.empty;
+        expect(result.warnings.length).to.be.greaterThan(0);
+        expect(result.warnings.some(w => w.includes('can\'t find “from” node'))).to.be.true;
+        expect(result.info.length).to.equal(1);
+
+        const graph = graphEl.object3D;
+        const edges = graph.children.filter(child => child.type === 'Line');
+        expect(edges.length).to.equal(0);
+    });
+
+    it('should not create edge missing "to" node, and warn', async function() {
+        const csvData = 'Uuid,Title,PositionX,PositionY,PositionZ,FromUuid,ToUuid\n' +
+            'n1,Node 1,1,1,1,,\n' +
+            'n2,Node 2,2,2,2,,\n' +
+            'e1,Edge 1,,,,n1,nonexistent2';
+        const blob = new Blob([csvData], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+
+        const result = await csvToNodes(url, 'NODA', graphEl);
+
+        expect(result.errors).to.be.empty;
+        expect(result.warnings.length).to.be.greaterThan(0);
+        expect(result.warnings.some(w => w.includes('can\'t find “to” node'))).to.be.true;
+        expect(result.info.length).to.equal(1);
+
+        const graph = graphEl.object3D;
+        const edges = graph.children.filter(child => child.type === 'Line');
+        expect(edges.length).to.equal(0);
+    });
+
+    it('should not create edge missing both nodes, and warn', async function() {
+        const csvData = 'Uuid,Title,PositionX,PositionY,PositionZ,FromUuid,ToUuid\n' +
+            'e1,Edge 1,,,,nonexistent1,nonexistent2';
         const blob = new Blob([csvData], { type: 'text/csv' });
         const url = URL.createObjectURL(blob);
 
