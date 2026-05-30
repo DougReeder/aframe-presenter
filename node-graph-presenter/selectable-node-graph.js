@@ -18,7 +18,7 @@ AFRAME.registerComponent('selectable-node-graph', {
 	/** Called once when component is attached. Generally for initial setup. */
 	init: function () {
 		this.handlers.openUrl = this.openUrl.bind(this);
-		this.handlers.openCsvFile = this.openCsvFile.bind(this);
+		this.handlers.openGraphFile = this.openGraphFile.bind(this);
 		this.handlers.fileInptChange = this.fileInptChange.bind(this);
 		this.handlers.preventDefault = (evt => { evt.preventDefault(); }).bind(this);
 		this.handlers.drop = this.drop.bind(this);
@@ -44,7 +44,7 @@ AFRAME.registerComponent('selectable-node-graph', {
 		openFileBtn.style.marginRight = '2em';
 		openFileBtn.innerText = "Select Noda .CSV file";
 		controlStrip.appendChild(openFileBtn);
-		openFileBtn.addEventListener('click', this.handlers.openCsvFile);
+		openFileBtn.addEventListener('click', this.handlers.openGraphFile);
 
 		const fileInpt = document.createElement('input');
 		fileInpt.setAttribute('id', FILE_INPT_ID);
@@ -97,7 +97,7 @@ AFRAME.registerComponent('selectable-node-graph', {
 		spinner.addEventListener('stateadded', this.handlers.spinnerStateAdded);
 		spinner.addEventListener('stateremoved', this.handlers.spinnerStateRemoved);
 
-		spinner?.addState(STATE_SPINNING);   // marks where csv will be placed
+		spinner?.addState(STATE_SPINNING);   // marks where node graph will be placed
 	},
 
 	handlers: {},
@@ -116,8 +116,8 @@ AFRAME.registerComponent('selectable-node-graph', {
 		}
 	},
 
-	openCsvFile: function (evt) {
-		console.log(`openCsvFile`, evt.detail);
+	openGraphFile: function (evt) {
+		console.log(`openGraphFile`, evt.detail);
 		this.fileInpt.click();
 		this.clearPersistentMsg();
 	},
@@ -130,7 +130,7 @@ AFRAME.registerComponent('selectable-node-graph', {
 			let spinner = document.getElementById(SPINNER_ID);
 			spinner?.addState(STATE_SPINNING);
 
-			await this.syncCsv(this.fileInpt.files[0]);
+			await this.graphFileToUrl(this.fileInpt.files[0]);
 		} catch (err) {
 			console.error(`fileInptChange:`, err);
 			this.showPersistentMsg(err);
@@ -150,7 +150,7 @@ AFRAME.registerComponent('selectable-node-graph', {
 					const spinner = document.getElementById(SPINNER_ID);
 					spinner?.addState(STATE_SPINNING);
 
-					await this.syncCsv(files[i]);
+					await this.graphFileToUrl(files[i]);
 					return;
 				} else {
 					++i;
@@ -169,33 +169,33 @@ AFRAME.registerComponent('selectable-node-graph', {
 		}
 	},
 
-	syncCsv: async function (file) {
+	graphFileToUrl: async function (file) {
 		const dataIF = this.el.sceneEl.croquetSession?.data;
-		let csvUrl;
+		let graphUrl;
 		if (typeof dataIF?.store === 'function' && file.size > BASE64_CROQUET_MAX) {
 			try {
 				const buffer = await file.arrayBuffer();
 				const handle = await dataIF.store(buffer, {});
 				const croquetId = dataIF.toId(handle);
-				csvUrl = `multisynq:` + croquetId;
+				graphUrl = `multisynq:` + croquetId;
 			} catch (err) {
-				console.error(`syncCsv:`, err);
+				console.error(`graphFileToUrl:`, err);
 				this.showPersistentMsg(err);
 			}
 		} else if (typeof dataIF?.store !== 'function') {
-			console.warn(`syncCsv typeof dataIF?.store:`, typeof dataIF?.store, file.size);
+			console.warn(`graphFileToUrl typeof dataIF?.store:`, typeof dataIF?.store, file.size);
 			this.showPersistentMsg(`The Multisynq API for syncing files has changed`);
 		}
-		if (!csvUrl) {
-			csvUrl = await fileToDataUrl(file);
-			if (csvUrl.length > 16384) {
-				console.warn(`${file.name} csvUrl.length ${csvUrl.length} > 16384`);
+		if (!graphUrl) {
+			graphUrl = await fileToDataUrl(file);
+			if (graphUrl.length > 16384) {
+				console.warn(`${file.name} csvUrl.length ${graphUrl.length} > 16384`);
 				this.showPersistentMsg(`“${file.name}” is too big to sync to other users; upload it somewhere and paste the URL below`);
-				csvUrl = URL.createObjectURL(file);
-				console.debug(`created object URL:`, csvUrl);
+				graphUrl = URL.createObjectURL(file);
+				console.debug(`created object URL:`, graphUrl);
 			}
 		}
-		this.el.setAttribute('selectable-node-graph', 'src', csvUrl);
+		this.el.setAttribute('selectable-node-graph', 'src', graphUrl);
 		this.csvNeedsScaling = true;
 		this.urlInput.value = '';   // we're definitely loading a file
 
@@ -231,21 +231,21 @@ AFRAME.registerComponent('selectable-node-graph', {
 				console.debug(`revoked object URL:`, oldData.src);
 			}
 
-			let csvUrl = this.data.src;
+			let graphUrl = this.data.src;
 
-			if (csvUrl.startsWith('multisynq:')) {
+			if (graphUrl.startsWith('multisynq:')) {
 				const dataIF = this.el.sceneEl.croquetSession?.data;
-				const handle = dataIF.fromId(csvUrl.slice('multisynq:'.length));
+				const handle = dataIF.fromId(graphUrl.slice('multisynq:'.length));
 				const byteArray = await dataIF.fetch(handle);
 				const blob = new Blob([byteArray], {type: 'text/csv'});
 				this.objectUrl = URL.createObjectURL(blob);
-				csvUrl = this.objectUrl;
+				graphUrl = this.objectUrl;
 			}
 
-			console.log(`selectable-node-graph update CSV src: “${csvUrl}”`)
+			console.log(`selectable-node-graph update graph src: “${graphUrl}”`)
 			this.clearPersistentMsg();
 
-			csvToNodes(this.data.src, this.el).then(({errors, warnings, info}) => {
+			csvToNodes(graphUrl, this.el).then(({errors, warnings, info}) => {
 				console.log(`selectable-node-graph new elements:`, this.el.children);
 				if (errors?.length > 0 || warnings?.length > 0 || info?.length > 0) {
 					this.showTransientMsg([...errors, ...warnings, ...info].join('\n'));
