@@ -1,8 +1,6 @@
 // csvToNodes.js — converts Noda .CSV data to Three.js objects
 // Copyright © 2026 by Doug Reeder under the MIT License
 
-const SPIKY_FUDGE_FACTOR = 1.3;
-
 async function csvToNodes(url, flavorCsv, graphEl) {
   console.debug('csvToNodes: url = ' + url);
 
@@ -19,7 +17,7 @@ async function csvToNodes(url, flavorCsv, graphEl) {
   const elMap = new Map();
 
   await new Promise((resolve, reject) => {
-    const data = Papa.parse(url, {
+    Papa.parse(url, {
       download: true,
       header: true,
       // dynamicTyping: {PositionX: true, PositionY: true, PositionZ: true, Opacity: true, Size: true},
@@ -41,19 +39,25 @@ async function csvToNodes(url, flavorCsv, graphEl) {
 
         let numNodes = 0, numEdges = 0;
         for (let row of data) {
-          // the flavorCsv determines what fields of row to read
-          const id = row.Uuid;
-          if (row.PositionX || row.PositionY || row.PositionZ) {   // node
+          let id, title, notes, imageUrl, linkUrl, color, opacity, primitive, collapsed, position, size, fromId, toId;
+          switch (flavorCsv) {   // the flavorCsv determines what fields of row to read
+            case 'NODA':
+              ({id, title, notes, imageUrl, linkUrl, color, opacity, primitive, collapsed, position, size, fromId, toId} = mapNodaValues(row));
+              break;
+          }
+          if (!Number.isNaN(position.x) || !Number.isNaN(position.y) || !Number.isNaN(position.z)) {   // node
             if (!id) {
-              info.push(`node “${row.Title || row.Notes}” has no ID`);
+              info.push(`node “${title || notes}” has no ID`);
             }
 
             const el = document.createElement('a-entity');
             el.setAttribute('id', id);
-            el.setAttribute('graph-node', {id: id, title: row.Title, notes: row.Notes, imageUrl: row.ImageURL, linkUrl: row.PageURL, color: row.Color, opacity: row.Opacity, shape: row.Shape, collapsed: row.Collapsed});
-            el.object3D.position.set(parseNumber(row.PositionX), parseNumber(row.PositionY), parseNumber(row.PositionZ));
+            el.setAttribute('graph-node', {id, title, notes, imageUrl, linkUrl, color, opacity, primitive, collapsed});
+            position.x ||= 0;
+            position.y ||= 0;
+            position.z ||= 0;
+            el.object3D.position.copy(position);
             // el.setAttribute('rotation', '0 45 0');
-            const size = parseInt(row.Size || "5") / 50;
             el.object3D.scale.set(size, size, size);
             el.object3D.userData.id = id;
             el.classList.add(PRESENTATION_CLASS);
@@ -65,29 +69,29 @@ async function csvToNodes(url, flavorCsv, graphEl) {
             // edges refer to the _most recently_ defined node with the given ID
             elMap.set(id, el);
             ++numNodes;
-          } else if (row.FromUuid || row.ToUuid) {   // edge
-            const fromPosition = elMap.get(row.FromUuid)?.object3D?.position;
+          } else if (fromId || toId) {   // edge
+            const fromPosition = elMap.get(fromId)?.object3D?.position;
             if (!fromPosition) {
-              console.warn(`can't find “from” node for edge “${row.Title || row.Notes || id}”`);
-              warnings.push(`can't find “from” node for edge “${row.Title || row.Notes || id}”`);
+              console.warn(`can't find “from” node for edge “${title || notes || id}”`);
+              warnings.push(`can't find “from” node for edge “${title || notes || id}”`);
               continue;
             }
-            const toPosition = elMap.get(row.ToUuid)?.object3D?.position;
+            const toPosition = elMap.get(toId)?.object3D?.position;
             if (!toPosition) {
-              console.warn(`can't find “to” node for edge “${row.Title || row.Notes || id}”`);
-              warnings.push(`can't find “to” node for edge “${row.Title || row.Notes || id}”`);
+              console.warn(`can't find “to” node for edge “${title || notes || id}”`);
+              warnings.push(`can't find “to” node for edge “${title || notes || id}”`);
               continue;
             }
             const points = [fromPosition, toPosition];
             const geometry = new THREE.BufferGeometry().setFromPoints(points);
-            const material = new THREE.LineBasicMaterial({color: threeJsColor(row.Color)});
+            const material = new THREE.LineBasicMaterial({color});
             const object = new THREE.Line(geometry, material);
-            if (row.Title) {object.name = row.Title}
+            if (title) {object.name = title}
             graph.add(object);
             ++numEdges;
           } else {
-            console.warn(`unknown thing “${row.Title || row.Shape || row.ImageURL}”`);
-            warnings.push(`unknown thing “${row.Title || row.Shape || row.ImageURL}”`);
+            console.warn(`unknown thing “${title || notes?.slice(0, 20) || primitive || imageUrl}”`);
+            warnings.push(`unknown thing “${title || notes?.slice(0, 20) || primitive || imageUrl}”`);
           }
         }
         info.push(`Parsed ${data.length} rows; added ${numNodes} nodes and ${numEdges} edges`);
@@ -117,45 +121,62 @@ async function csvToNodes(url, flavorCsv, graphEl) {
   return {errors, warnings, info};
 }
 
-function createNodeGeometry(row) {
-  const size = parseInt(row.Size || "5") / 50;
+function mapNodaValues(row) {
+  const id = row.Uuid;
 
+  const title = row.Title;
+
+  const notes = row.Notes;
+
+  const imageUrl = row.ImageURL;
+
+  const linkUrl = row.PageURL;
+
+  const color = threeJsColor(row.Color);
+
+  const opacity = parseNumber(row.Opacity);
+
+  let primitive;
   switch (row.Shape) {
     case 'Ball':
-      return new THREE.SphereGeometry(size);
+      primitive = 'sphere';
+      break;
     case 'Box':
-      const boxLength = (Math.sin(Math.PI / 4) + 1) * size;
-      return new THREE.BoxGeometry(boxLength, boxLength, boxLength);
+      primitive = 'box';
+      break;
     case 'Tetra':
-      return new THREE.TetrahedronGeometry(size * SPIKY_FUDGE_FACTOR);
+      primitive = 'tetrahedron';
+      break;
     case 'Cylinder':
-      const cylinderSize = (Math.sin(Math.PI / 4) + 1) / 2 * size;
-      return new THREE.CylinderGeometry(cylinderSize, cylinderSize, cylinderSize * 2);
+      primitive = 'cylinder';
+      break;
     case 'Diamond':   // octahedron
-      return new THREE.OctahedronGeometry(size * 1.1);
+      primitive = 'octahedron';
+      break;
     case 'Hourglass': // hourglass
-      const hourglassCoordinate = (Math.sin(Math.PI / 4) + 1) / 2 * size;
-      const hourglassPoints = [new THREE.Vector2(0, -hourglassCoordinate), new THREE.Vector2(hourglassCoordinate, -hourglassCoordinate), new THREE.Vector2(0, 0), new THREE.Vector2(hourglassCoordinate, hourglassCoordinate), new THREE.Vector2(0, hourglassCoordinate)];
-      return new THREE.LatheGeometry(hourglassPoints);
+      primitive = 'cone';
+      break;
+    case 'Flat':
+      primitive = 'plane';
+      break;
     case 'Plus':   // 3D plus sign (7 cubes)
-      const plusDim = (Math.sin(Math.PI * 5 / 12) + 1) / 2 * size;
-      const plusPoints = [new THREE.Vector2(0, -plusDim), new THREE.Vector2(plusDim / 3, -plusDim), new THREE.Vector2(plusDim / 3, -plusDim / 3), new THREE.Vector2(plusDim, -plusDim / 3), new THREE.Vector2(plusDim, plusDim / 3), new THREE.Vector2(plusDim / 3, plusDim / 3), new THREE.Vector2(plusDim / 3, plusDim), new THREE.Vector2(0, plusDim)];
-      return new THREE.LatheGeometry(plusPoints, 4);
     case 'Star':   // stellated dodecahedron
-      const starPoints = [
-        new THREE.Vector2(0, -size),
-        new THREE.Vector2(Math.sin(Math.PI / 6) * size / 2, -Math.cos(Math.PI / 6) * size / 2),
-        new THREE.Vector2(Math.sin(Math.PI / 3) * size, -Math.cos(Math.PI / 3) * size),
-        new THREE.Vector2(size / 2, 0),
-        new THREE.Vector2(Math.sin(Math.PI / 3) * size, Math.cos(Math.PI / 3) * size),
-        new THREE.Vector2(Math.sin(Math.PI / 6) * size / 2, Math.cos(Math.PI / 6) * size / 2),
-        new THREE.Vector2(0, size)];
-      return new THREE.LatheGeometry(starPoints, 3);
     default:
-      return new THREE.PlaneGeometry(size, size);
+      primitive = 'torusKnot';
+      break;
   }
-}
 
+  const collapsed = ['yes','y','true','t','1'].includes(row.Collapsed?.toLowerCase());
+
+  const position = new THREE.Vector3(parseNumber(row.PositionX), parseNumber(row.PositionY), parseNumber(row.PositionZ));
+
+  const size = parseInt(row.Size || "5") / 50;
+
+  const fromId = row.FromUuid;
+  const toId = row.ToUuid;
+
+  return {id, title, notes, imageUrl, linkUrl, color, opacity, primitive, collapsed, position, size, fromId, toId};
+}
 
 function disposeTree(tree) {
   if (!tree) return;
@@ -186,32 +207,29 @@ function parseNumber(value) {
       return parseFloat(value);
     }
   } else {
-    return value || 0;
+    return value;
   }
 }
 
 function threeJsColor(color) {
-  if (typeof color !== 'string') {
+  if (typeof color === 'number') {
     return color;
   }
 
-  color = color.trim();
+  if (typeof color === 'string') {
+    color = color.trim();
 
-  if (/^[0-9A-Fa-f]{1,6}$/.test(color)) {
-    color = ("00000" + color).slice(-6);
-    return '#'+color;
+    if (/^[0-9A-Fa-f]{1,6}$/.test(color)) {   // hex color
+      color = ("00000" + color).slice(-6);
+      return '#' + color;
+    }
+
+    if (/^[a-zA-Z]+$/.test(color)) {   // named color
+      return color;
+    }
   }
 
-  if (/^\w+$/.test(color)) {
-    return color;
-  }
-
-  const digits = '0123456789ABCDEF';
-  let randomColor = '#';
-  for (let i = 0; i < 6; i++) {
-    randomColor += digits[Math.floor(Math.random() * 16)];
-  }
-  return randomColor;
+  return '#FFFFFF';
 }
 
 function papaErrorToString(error) {

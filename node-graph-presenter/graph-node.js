@@ -10,7 +10,7 @@ AFRAME.registerComponent('graph-node', {
     linkUrl: {type: 'asset'},
     color: {type: 'color'},
     opacity: {default: 1.0},
-    shape: {default: 'Box'},
+    primitive: {default: 'box'},
     collapsed: {default: false},
   },
 
@@ -20,18 +20,18 @@ AFRAME.registerComponent('graph-node', {
   init: function () {
     console.debug(`graph-node init `, this.data);
 
-    this.setNodeGeometry(this.data.shape);
-    this.setNodeMaterial(this.data.color, this.data.opacity, this.data.shape === 'Flat');
+    this.setNodeGeometry(this.data.primitive);
+    this.setNodeMaterial(this.data.color, this.data.opacity, this.data.primitive === 'plane');
   },
 
   handlers: {},
 
   update: function (oldData) {
-    if (this.data.shape !== oldData.shape) {
+    if (this.data.primitive !== oldData.primitive) {
       if (this.el.components.geometry) {
         this.el.getObject3D('mesh')?.geometry?.dispose?.();
       }
-      this.setNodeGeometry(this.data.shape);
+      this.setNodeGeometry(this.data.primitive);
     }
     if (this.data.color !== oldData.color || this.data.opacity !== oldData.opacity) {
       if (this.el.components.material) {
@@ -44,10 +44,10 @@ AFRAME.registerComponent('graph-node', {
           }
         }
       }
-      this.setNodeMaterial(this.data.color, this.data.opacity, this.data.shape === 'Flat');
+      this.setNodeMaterial(this.data.color, this.data.opacity, this.data.primitive === 'plane');
     }
     if ((this.data.title || oldData.title) && this.data.title !== oldData.title) {
-      this.setNodeTitle(this.data.title, this.data.shape === 'Flat');
+      this.setNodeTitle(this.data.title, this.data.primitive === 'plane');
     }
     if ((this.data.notes || oldData.notes) && this.data.notes !== oldData.notes ) {
       this.setNotesChild(this.data.notes);
@@ -57,29 +57,32 @@ AFRAME.registerComponent('graph-node', {
     }
   },
 
-  setNodeGeometry: function (shape) {
-    switch (shape) {
-      case 'Ball':
+  setNodeGeometry: function (primitive) {
+    switch (primitive) {
+      case 'sphere':
         this.el.setAttribute('geometry', {primitive: 'sphere'});
         return;
-      case 'Box':
+      case 'box':
         const boxLength = (Math.sin(Math.PI / 4) + 1);
         this.el.setAttribute('geometry', {primitive: 'box', width: boxLength, height: boxLength, depth: boxLength});
         return;
-      case 'Tetra':
+      case 'tetrahedron':
         this.el.setAttribute('geometry', {primitive: 'tetrahedron', radius: 1.3});   // fudge factor
         return;
-      case 'Cylinder':
+      case 'cylinder':
         const cylinderSize = (Math.sin(Math.PI / 4) + 1) / 2;
         this.el.setAttribute('geometry', {primitive: 'cylinder', radius: cylinderSize, height: cylinderSize * 2});
         return;
-      case 'Diamond':   // octahedron
+      case 'octahedron':   // octahedron
         this.el.setAttribute('geometry', {primitive: 'octahedron', radius: 1.1});   // fudge factor
         return;
-      case 'Hourglass': // hourglass
-        const hourglassCoordinate = (Math.sin(Math.PI / 4) + 1) / 2;
+      case 'cone':
         this.el.setAttribute('geometry', {primitive: 'cone', radiusTop: 0});
         return;
+      // case 'Hourglass': // hourglass
+      //   const hourglassCoordinate = (Math.sin(Math.PI / 4) + 1) / 2;
+      //   const hourglassPoints = [new THREE.Vector2(0, -hourglassCoordinate), new THREE.Vector2(hourglassCoordinate, -hourglassCoordinate), new THREE.Vector2(0, 0), new THREE.Vector2(hourglassCoordinate, hourglassCoordinate), new THREE.Vector2(0, hourglassCoordinate)];
+      //   return new THREE.LatheGeometry(hourglassPoints);
       // case 'Plus':   // 3D plus sign (7 cubes)
       //   const plusDim = (Math.sin(Math.PI * 5 / 12) + 1) / 2;
       //   const plusPoints = [new THREE.Vector2(0, -plusDim), new THREE.Vector2(plusDim / 3, -plusDim), new THREE.Vector2(plusDim / 3, -plusDim / 3), new THREE.Vector2(plusDim, -plusDim / 3), new THREE.Vector2(plusDim, plusDim / 3), new THREE.Vector2(plusDim / 3, plusDim / 3), new THREE.Vector2(plusDim / 3, plusDim), new THREE.Vector2(0, plusDim)];
@@ -94,9 +97,8 @@ AFRAME.registerComponent('graph-node', {
       //     new THREE.Vector2(Math.sin(Math.PI / 6) * size / 2, Math.cos(Math.PI / 6) * size / 2),
       //     new THREE.Vector2(0, size)];
       //   return new THREE.LatheGeometry(starPoints, 3);
-      case 'Flat':
-        const planeLength = (Math.sin(Math.PI / 4) + 1);
-        this.el.setAttribute('geometry', {primitive: 'plane', width: 0, height: 0});   // adaps to title
+      case 'plane':
+        this.el.setAttribute('geometry', {primitive: 'plane', width: 0, height: 0});   // adapts to title
         return;
       default:
         this.el.setAttribute('geometry', {primitive: 'torusKnot' /*, radius: size, radiusTubular: 0.3*size*/});
@@ -106,34 +108,10 @@ AFRAME.registerComponent('graph-node', {
 
   setNodeMaterial: function (color, opacity = 1.0, isDoubleSide = false) {
     this.el.setAttribute('material', {
-      color: this.threeJsColor(color),
+      color: color,
       opacity, transparent: (opacity < 1),
       side: isDoubleSide ? 'double' : 'front'   // A-Frame constants, not Three.js constants
     });
-  },
-
-  threeJsColor: function (color) {
-    if (typeof color !== 'string') {
-      return color;
-    }
-
-    color = color.trim();
-
-    if (/^[0-9A-Fa-f]{1,6}$/.test(color)) {
-      color = ("00000" + color).slice(-6);
-      return '#'+color;
-    }
-
-    if (/^\w+$/.test(color)) {
-      return color;
-    }
-
-    const digits = '0123456789ABCDEF';
-    let randomColor = '#';
-    for (let i = 0; i < 6; i++) {
-      randomColor += digits[Math.floor(Math.random() * 16)];
-    }
-    return randomColor;
   },
 
   setNodeTitle: function (title, isFlat = false) {

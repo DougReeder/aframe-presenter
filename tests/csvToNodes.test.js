@@ -12,8 +12,8 @@ describe('csvToNodes', function() {
     });
 
     it('should parse a simple Noda CSV with one Ball node', async function() {
-        const csvData = 'Uuid,Title,PositionX,PositionY,PositionZ,Color,Size,Shape\n' +
-                        'node1,Test Node,1,2,3,ff0000,5,Ball';
+        const csvData = 'Uuid,Title,PositionX,PositionY,PositionZ,Color,Size,Shape,Collapsed\n' +
+                        'node1,Test Node,1,2,3,ff0000,5,Ball,No';
         const blob = new Blob([csvData], { type: 'text/csv' });
         blobUrl = URL.createObjectURL(blob);
 
@@ -37,16 +37,17 @@ describe('csvToNodes', function() {
         const graphNodeAttr = nodeEl.getAttribute('graph-node');
         expect(graphNodeAttr.title).to.equal('Test Node');
         expect(graphNodeAttr.notes).to.equal('');
-        expect(graphNodeAttr.color).to.equal('ff0000');
+        expect(graphNodeAttr.color).to.equal('#ff0000');
         expect(graphNodeAttr.opacity).to.equal(1.0);
-        expect(graphNodeAttr.shape).to.equal('Ball');
+        expect(graphNodeAttr.primitive).to.equal('sphere');
         expect(graphNodeAttr.imageUrl).to.equal('');
         expect(graphNodeAttr.linkUrl).to.equal('');
+        expect(graphNodeAttr.collapsed).to.be.false;
     });
 
     it('should parse a simple Noda CSV with one Diamond node w/ notes, ImageURL & PageURL', async function() {
-        const csvData = 'Uuid,Title,Notes,ImageURL,PageURL,PositionX,PositionY,PositionZ,Color,Size,Shape\n' +
-            'diamondNode,Diamond Node,some pig,https://example.com/pic,https://example.org/page,10,20,30,808080,6,Diamond';
+        const csvData = 'Uuid,Title,Notes,ImageURL,PageURL,PositionX,PositionY,PositionZ,Color,Size,Shape,Collapsed\n' +
+            'diamondNode,Diamond Node,some pig,https://example.com/pic,https://example.org/page,10,20,30,808080,6,Diamond,Yes';
         const blob = new Blob([csvData], { type: 'text/csv' });
         blobUrl = URL.createObjectURL(blob);
 
@@ -69,16 +70,17 @@ describe('csvToNodes', function() {
         const graphNodeAttr = nodeEl.getAttribute('graph-node');
         expect(graphNodeAttr.title).to.equal('Diamond Node');
         expect(graphNodeAttr.notes).to.equal('some pig');
-        expect(graphNodeAttr.color).to.equal('808080');
+        expect(graphNodeAttr.color).to.equal('#808080');
         expect(graphNodeAttr.opacity).to.equal(1.0);
-        expect(graphNodeAttr.shape).to.equal('Diamond');
+        expect(graphNodeAttr.primitive).to.equal('octahedron');
         expect(graphNodeAttr.imageUrl).to.equal('https://example.com/pic');
         expect(graphNodeAttr.linkUrl).to.equal('https://example.org/page');
+        expect(graphNodeAttr.collapsed).to.be.true;
 
         expect(graphEl.children.length).to.equal(1);
     });
 
-    it('should parse a simple Noda CSV with one Flat node w/ undefined X & Y', async function() {
+    it('should parse a simple Noda CSV with one Flat node w/ undefined X, Y, scale & color', async function() {
         const csvData = 'Uuid,Title,Notes,ImageURL,PageURL,PositionX,PositionY,PositionZ,Color,Size,Shape\n' +
             'flatNode,Flat Node,,,,,,69,,,Flat';
         const blob = new Blob([csvData], { type: 'text/csv' });
@@ -92,8 +94,8 @@ describe('csvToNodes', function() {
 
         const nodeEl = graphEl.children[0];
         expect(nodeEl.getAttribute('id')).to.equal('flatNode');
-        expect(nodeEl.object3D.position.x).to.be.NaN;
-        expect(nodeEl.object3D.position.y).to.be.NaN;
+        expect(nodeEl.object3D.position.x).to.equal(0);
+        expect(nodeEl.object3D.position.y).to.equal(0);
         expect(nodeEl.object3D.position.z).to.equal(69);
         expect(nodeEl.object3D.scale.x).to.equal(0.10);   // default
         expect(nodeEl.object3D.userData?.id).to.equal('flatNode');
@@ -104,14 +106,16 @@ describe('csvToNodes', function() {
         const graphNodeAttr = nodeEl.getAttribute('graph-node');
         expect(graphNodeAttr.title).to.equal('Flat Node');
         expect(graphNodeAttr.notes).to.equal('');
-        expect(graphNodeAttr.color).to.equal('#FFF');
+        expect(graphNodeAttr.color.toLowerCase()).to.equal('#ffffff');
         expect(graphNodeAttr.opacity).to.equal(1.0);
-        expect(graphNodeAttr.shape).to.equal('Flat');
+        expect(graphNodeAttr.primitive).to.equal('plane');
         expect(graphNodeAttr.imageUrl).to.equal('');
         expect(graphNodeAttr.linkUrl).to.equal('');
+        expect(graphNodeAttr.collapsed).to.be.false;
 
         expect(graphEl.children.length).to.equal(1);
     });
+
 
     it('should parse a Noda CSV with nodes and edges', async function() {
         const csvData = 'Uuid,Title,PositionX,PositionY,PositionZ,FromUuid,ToUuid\n' +
