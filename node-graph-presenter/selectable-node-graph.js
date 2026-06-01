@@ -108,7 +108,6 @@ AFRAME.registerComponent('selectable-node-graph', {
 		const url = URL.parse(value);
 		if (['https:', 'http:', 'ftp:', 'ftps:', 'sftp:', 'file:', 'data:', 'news:'].includes(url?.protocol)) {
 			this.el.setAttribute('selectable-node-graph', 'src', value);
-			this.csvNeedsScaling = true;
 		} else if (value?.length > 0) {
 			this.urlInput.value = '';
 			console.warn(`“${value}” is not a URL`);
@@ -196,7 +195,6 @@ AFRAME.registerComponent('selectable-node-graph', {
 			}
 		}
 		this.el.setAttribute('selectable-node-graph', 'src', graphUrl);
-		this.csvNeedsScaling = true;
 		this.urlInput.value = '';   // we're definitely loading a file
 
 		function fileToDataUrl(file) {

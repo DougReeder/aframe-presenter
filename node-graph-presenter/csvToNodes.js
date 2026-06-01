@@ -178,26 +178,6 @@ function mapNodaValues(row) {
   return {id, title, notes, imageUrl, linkUrl, color, opacity, primitive, collapsed, position, size, fromId, toId};
 }
 
-function disposeTree(tree) {
-  if (!tree) return;
-  tree.traverse(object => {
-    if (object.geometry) {
-      object.geometry.dispose();
-    }
-    if (object.material) {
-      if (Array.isArray(object.material)) {
-        object.material.forEach(material => material.dispose());
-      } else {
-        object.material.dispose();
-      }
-    }
-  });
-  for (let i=tree.children.length-1; i>=0; i--) {
-    tree.remove(tree.children[i]);
-  }
-}
-
-
 function parseNumber(value) {
   if (typeof value === 'string') {
     value = value.trim();
@@ -209,27 +189,6 @@ function parseNumber(value) {
   } else {
     return value;
   }
-}
-
-function threeJsColor(color) {
-  if (typeof color === 'number') {
-    return color;
-  }
-
-  if (typeof color === 'string') {
-    color = color.trim();
-
-    if (/^[0-9A-Fa-f]{1,6}$/.test(color)) {   // hex color
-      color = ("00000" + color).slice(-6);
-      return '#' + color;
-    }
-
-    if (/^[a-zA-Z]+$/.test(color)) {   // named color
-      return color;
-    }
-  }
-
-  return '#FFFFFF';
 }
 
 function papaErrorToString(error) {
