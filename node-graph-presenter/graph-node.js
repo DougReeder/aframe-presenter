@@ -110,6 +110,7 @@ AFRAME.registerComponent('graph-node', {
 
   setNodeMaterial: function (color, opacity = 1.0, isDoubleSide = false) {
     this.el.setAttribute('material', {
+      // shader: 'flat',
       color: color,
       opacity, transparent: (opacity < 1),
       side: isDoubleSide ? 'double' : 'front'   // A-Frame constants, not Three.js constants

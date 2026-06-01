@@ -1,4 +1,4 @@
-// selectable-node-graph.js — a component and primitive with UI to load a node graph from a Noda .CSV URL or file
+// selectable-node-graph.js — a component and primitive with UI to load a node graph from a Noda .CSV or SPDX .JSON URL or file
 // Copyright © 2026 by Doug Reeder under the MIT License
 
 const SPREADING_FACTOR = 1.1;
@@ -58,14 +58,14 @@ AFRAME.registerComponent('selectable-node-graph', {
 		openFileBtn.style.minHeight = '40px';
 		openFileBtn.style.marginRight = '2em';
 		openFileBtn.style.zIndex = '10';
-		openFileBtn.innerText = "Select Noda .CSV file";
+		openFileBtn.innerText = "Select Noda .csv or SPDX .json file";
 		controlStrip.appendChild(openFileBtn);
 		openFileBtn.addEventListener('click', this.handlers.openGraphFile);
 
 		const fileInpt = document.createElement('input');
 		fileInpt.setAttribute('id', FILE_INPT_ID);
 		fileInpt.setAttribute('type', 'file');
-		fileInpt.setAttribute('accept', 'text/csv,.csv');
+		fileInpt.setAttribute('accept', 'text/csv,.csv,application/json,.json');
 		document.body.appendChild(fileInpt);
 		fileInpt.addEventListener("change", this.handlers.fileInptChange);
 		this.fileInpt = fileInpt;
@@ -78,7 +78,7 @@ AFRAME.registerComponent('selectable-node-graph', {
 		const urlInput = document.createElement('input');
 		urlInput.setAttribute('id', 'urlInput');
 		urlInput.setAttribute('type', 'url');
-		urlInput.setAttribute('placeholder', "Paste a URL to a Noda .CSV");
+		urlInput.setAttribute('placeholder', "Paste a URL to a Noda .csv or SPDX .json");
 		urlInput.style.height = '40px';
 		urlInput.style.width = '20em';
 		urlInput.style.paddingLeft = '1em';
@@ -90,7 +90,7 @@ AFRAME.registerComponent('selectable-node-graph', {
 		const openUrlBtn = document.createElement('button');
 		openUrlBtn.style.minHeight = '40px';
 		openUrlBtn.style.zIndex = '10';
-		openUrlBtn.innerText = "Fetch Noda CSV from URL";
+		openUrlBtn.innerText = "Fetch Noda .csv or SPDX .json from URL";
 		urlControls.appendChild(openUrlBtn);
 		openUrlBtn.addEventListener('click', this.handlers.openUrl);
 
@@ -164,7 +164,7 @@ AFRAME.registerComponent('selectable-node-graph', {
 
 			let i = 0;
 			do {
-				if (['text/csv', ''].includes(files[i]?.type)) {
+				if (['text/csv', 'application/json', ''].includes(files[i]?.type)) {
 					evt.stopPropagation();
 					evt.preventDefault();
 					const spinner = document.getElementById(SPINNER_ID);
@@ -180,8 +180,8 @@ AFRAME.registerComponent('selectable-node-graph', {
 			if ('drop' === evt.type || 'INPUT' !== evt.target.tagName) {
 				evt.stopPropagation();
 				evt.preventDefault();
-				console.info(`Only a Noda .CSV file can be ${'paste' === evt.type ? "pasted" : "dropped"} here`);
-				this.showTransientMsg(`Only a Noda .CSV file can be ${'paste' === evt.type ? "pasted" : "dropped"} here`);
+				console.info(`Only a Noda .csv or SPDX .json file can be ${'paste' === evt.type ? "pasted" : "dropped"} here`);
+				this.showTransientMsg(`Only a Noda .csv or SPDX .json file can be ${'paste' === evt.type ? "pasted" : "dropped"} here`);
 			}
 		} catch (err) {
 			console.error(`drop:`, err);
@@ -197,7 +197,7 @@ AFRAME.registerComponent('selectable-node-graph', {
 				const buffer = await file.arrayBuffer();
 				const handle = await dataIF.store(buffer, {});
 				const croquetId = dataIF.toId(handle);
-				graphUrl = `multisynq:` + croquetId;
+				graphUrl = `croquet:` + file.type + ',' + croquetId;
 			} catch (err) {
 				console.error(`graphFileToUrl:`, err);
 				this.showPersistentMsg(err);
@@ -234,8 +234,14 @@ AFRAME.registerComponent('selectable-node-graph', {
 		}
 	},
 
-	/** Called when properties are changed, incl. right after init */
+	/** Called when properties are changed, incl. right after init
+	 * A-Frame **WILL NOT WAIT FOR THE RETURNED PROMISE**,
+	 * so any code after an await may be out-of-date.
+	 */
 	update: async function (oldData = {}) {
+		let graphUrl = this.data.src;
+		const spinner = document.getElementById(SPINNER_ID);
+
 		try {
 			console.debug(`selectable-node-graph update:`, this.data, oldData);
 			this.fileInpt.value = '';
@@ -273,9 +279,7 @@ AFRAME.registerComponent('selectable-node-graph', {
 				return;
 			}
 
-			const loadToken = Symbol(this.data.src);
-			this.currentLoadToken = loadToken;
-			const spinner = document.getElementById(SPINNER_ID);
+			const loadToken = this.currentLoadToken = Symbol(graphUrl);
 			spinner?.addState(STATE_SPINNING);
 
 			if (oldData.src?.startsWith?.('blob:')) {
@@ -283,56 +287,97 @@ AFRAME.registerComponent('selectable-node-graph', {
 				console.debug(`revoked object URL:`, oldData.src);
 			}
 
-			let graphUrl = this.data.src;
-
-			if (graphUrl?.startsWith?.('multisynq:')) {
+			const croquetMatch = /^croquet:([^,]+),(.+)$/.exec(graphUrl);
+			if (croquetMatch) {
 				const dataIF = this.el.sceneEl.croquetSession?.data;
-				const handle = dataIF.fromId(graphUrl.slice('multisynq:'.length));
+				const handle = dataIF.fromId(croquetMatch[2]);
 				const byteArray = await dataIF.fetch(handle);
 				if (this.currentLoadToken !== loadToken) {
 					console.warn(`abandoned slow load of ${graphUrl}`);
 					return;
 				}
-				const blob = new Blob([byteArray], {type: 'text/csv'});
+				const blob = new Blob([byteArray], {type: croquetMatch[1]});
 				graphUrl = URL.createObjectURL(blob);
 			}
 
 			console.log(`selectable-node-graph update graph src: "${graphUrl}"`);
 			this.clearPersistentMsg();
 
-			csvToNodes(graphUrl, this.data.flavorCsv, this.el).then(({errors, warnings, info}) => {
-				if (this.currentLoadToken !== loadToken) {
-					console.warn(`abandoned slow load of ${graphUrl}`);
-					return;
-				}
-				console.log(`selectable-node-graph new elements:`, this.el.children);
-				if (errors?.length > 0 || warnings?.length > 0 || info?.length > 0) {
-					this.showTransientMsg([...errors, ...warnings, ...info].join('\n'));
-				}
-
-				setTimeout(() => {
-					try {
-						if (this.currentLoadToken !== loadToken) {
-							console.warn(`abandoned slow load of ${graphUrl}`);
-							return;
+			let contentType;
+			const url = URL.parse(graphUrl);
+			switch (url?.protocol) {
+				case 'https:':
+				case 'http:':
+					const headResponse = await fetch(graphUrl, {method: 'HEAD'});
+					contentType = headResponse.headers.get('content-type');
+					if (headResponse.ok && !contentType || [401, 403, 405, 407, 408].includes(headResponse.status)) {
+						const getResponse = await fetch(graphUrl, {method: 'GET'});
+						contentType = getResponse.headers.get('content-type');
+						if (! getResponse.ok) {
+							throw new Error(`Unable to read URL: ${getResponse.statusText || getResponse.status}`);
 						}
-						this.adjustSpread();
-						this.el.emit('graph-loaded');
-					} catch (err) {
-						console.error(`selectable-node-graph update spread:`, err);
-						this.showTransientMsg("spread not adjusted");
+					} else if (! headResponse.ok) {
+						throw new Error(`Unable to read URL metadata: ${headResponse.statusText || headResponse.status}`);
 					}
-				}, 0);
-			}).catch(err => {
-				console.error(`csvToNodes threw`, err);
-				this.showPersistentMsg(err);
-			}).finally(() => {
-				// presumes PapaParse is done with CSV data
-				URL.revokeObjectURL(graphUrl); // ok if not ObjectURL
-				spinner?.removeState(STATE_SPINNING);
-			});
+					break;
+				case 'data:':
+					const match = /^data:([^;,]*)[;,]/.exec(graphUrl);
+					contentType = match?.[1] || 'text/plain';
+					break;
+				case 'blob:':
+					const blobResponse = await fetch(graphUrl);
+					if (!blobResponse.ok) {
+						throw new Error(`Unable to read blob URL: HTTP ${blobResponse.status}`);
+					}
+					const blob = await blobResponse.blob();
+					contentType =  blob.type; // Returns the content-type string
+					break;
+				default:
+					throw new Error(`Unsupported URL protocol: ${url?.protocol}`);
+			}
+			if (this.currentLoadToken !== loadToken) {
+				console.warn(`abandoned slow type check for ${graphUrl}`);
+				return;
+			}
+
+			let errors = [], warnings = [], info = [];
+			if (contentType?.startsWith?.('text/csv')) {
+				({errors, warnings, info} = await csvToNodes(graphUrl, this.data.flavorCsv, this.el));
+			} else if (contentType?.startsWith?.('application/json')) {
+				({errors, warnings, info} = await jsonToNodes(graphUrl, this.el));
+			} else {
+				throw new Error(`Unsupported content type: ${contentType || 'unknown'}`);
+			}
+			if (this.currentLoadToken !== loadToken) {
+				console.warn(`abandoned slow load of ${graphUrl}`);
+				return;
+			}
+
+			console.log(`selectable-node-graph new elements:`, this.el.children);
+			if (errors?.length > 0 || warnings?.length > 0 || info?.length > 0) {
+				this.showTransientMsg([...errors, ...warnings, ...info].join('\n'));
+			}
+
+			setTimeout(() => {
+				try {
+					if (this.currentLoadToken !== loadToken) {
+						console.warn(`abandoned slow load of ${graphUrl}`);
+						return;
+					}
+					this.adjustSpread();
+					this.el.emit('graph-loaded');
+				} catch (err) {
+					console.error(`selectable-node-graph update spread:`, err);
+					this.showTransientMsg("spread not adjusted");
+				}
+			}, 0);
 		} catch (err) {
 			console.error(`selectable-node-graph update error:`, err);
+			this.showPersistentMsg(err);
+		} finally {
+			// presumes URL content has been completely read
+			URL.revokeObjectURL(graphUrl); // ok if not ObjectURL
+			spinner?.removeState(STATE_SPINNING);
 		}
 	},
 
