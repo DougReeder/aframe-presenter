@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module version="4">
+  <component name="NewModuleRootManager">
+    <content url="file://$MODULE_DIR$">
+      <sourceFolder url="file://$MODULE_DIR$/tests" isTestSource="true" />
+      <excludePattern pattern="dist" />
+    </content>
+    <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="library" name="mocha" level="application" />
+    <orderEntry type="library" name="chai" level="application" />
+    <orderEntry type="library" name="aframe" level="application" />
+    <orderEntry type="library" name="papaparse" level="application" />
+    <orderEntry type="library" name="@croquet/croquet" level="application" />
+    <orderEntry type="library" name="aframe-croquet-component" level="application" />
+    <orderEntry type="library" name="aframe-extras.loaders" level="application" />
+    <orderEntry type="library" name="aframe-extras.controls" level="application" />
+    <orderEntry type="library" name="aframe-orbit-controls" level="application" />
+  </component>
+</module>
