@@ -49,16 +49,14 @@ async function csvToNodes(url, flavorCsv, graphEl) {
             if (!id) {
               info.push(`node “${title || notes}” has no ID`);
             }
-
-            const el = document.createElement('a-entity');
-            el.setAttribute('id', id);
-            el.setAttribute('graph-node', {id, title, notes, imageUrl, linkUrl, color, opacity, primitive, collapsed});
             position.x ||= 0;
             position.y ||= 0;
             position.z ||= 0;
+
+            const el = document.createElement('a-entity');
+            el.setAttribute('id', id);
+            el.setAttribute('graph-node', {id, title, notes, imageUrl, linkUrl, color, opacity, primitive, size, collapsed, naturalPosition: position});
             el.object3D.position.copy(position);
-            // el.setAttribute('rotation', '0 45 0');
-            el.object3D.scale.set(size, size, size);
             el.object3D.userData.id = id;
             el.classList.add(PRESENTATION_CLASS);
             graphEl.appendChild(el);
@@ -70,24 +68,29 @@ async function csvToNodes(url, flavorCsv, graphEl) {
             elMap.set(id, el);
             ++numNodes;
           } else if (fromId || toId) {   // edge
-            const fromPosition = elMap.get(fromId)?.object3D?.position;
-            if (!fromPosition) {
+            const start = elMap.get(fromId)?.object3D?.position;
+            if (!start) {
               console.warn(`can't find “from” node for edge “${title || notes || id}”`);
               warnings.push(`can't find “from” node for edge “${title || notes || id}”`);
               continue;
             }
-            const toPosition = elMap.get(toId)?.object3D?.position;
-            if (!toPosition) {
+            const end = elMap.get(toId)?.object3D?.position;
+            if (!end) {
               console.warn(`can't find “to” node for edge “${title || notes || id}”`);
               warnings.push(`can't find “to” node for edge “${title || notes || id}”`);
               continue;
             }
-            const points = [fromPosition, toPosition];
-            const geometry = new THREE.BufferGeometry().setFromPoints(points);
-            const material = new THREE.LineBasicMaterial({color});
-            const object = new THREE.Line(geometry, material);
-            if (title) {object.name = title}
-            graph.add(object);
+            const edgeEl = document.createElement('a-entity');
+            if (id) {
+              edgeEl.setAttribute('id', id);
+              edgeEl.object3D.userData.id = id;
+            }
+            edgeEl.setAttribute('graph-edge', {
+              title, color, opacity,
+              fromId, start,
+              toId, end
+            });
+            graphEl.appendChild(edgeEl);
             ++numEdges;
           } else {
             console.warn(`unknown thing “${title || notes?.slice(0, 20) || primitive || imageUrl}”`);
@@ -134,7 +137,7 @@ function mapNodaValues(row) {
 
   const color = threeJsColor(row.Color);
 
-  const opacity = parseNumber(row.Opacity);
+  const opacity = Math.min(Math.max(parseNumber(row.Opacity ?? 1.0), 0), 1.0);
 
   let primitive;
   switch (row.Shape) {
@@ -170,7 +173,7 @@ function mapNodaValues(row) {
 
   const position = new THREE.Vector3(parseNumber(row.PositionX), parseNumber(row.PositionY), parseNumber(row.PositionZ));
 
-  const size = parseInt(row.Size || "5") / 50;
+  const size = parseFloat(row.Size || "5") / 100;
 
   const fromId = row.FromUuid;
   const toId = row.ToUuid;

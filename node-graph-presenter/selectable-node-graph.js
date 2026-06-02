@@ -13,7 +13,14 @@ AFRAME.registerComponent('selectable-node-graph', {
 
 	schema: {
 		src: {type: 'asset'},
+		minInitialWidth: {default: 0.5},   // if more than one node
+		minInitialHeight: {default: 0.5},   // if more than one node
+		maxInitialWidth: {default: 5},
+		maxInitialHeight: {default: 2},
+		frameCenter: {type: 'vec3', default: {x: 0, y: 1.25, z: 0}},
+		spread: {type: 'vec2', default: {x: 1, y: 1}},   // spread.x also controls z
 		flavorCsv: {default: 'NODA'},
+		log: {default: false},
 	},
 
 	/** Called once when component is attached. Generally for initial setup. */
@@ -106,7 +113,7 @@ AFRAME.registerComponent('selectable-node-graph', {
 		const value = this.urlInput?.value?.trim();
 		console.debug(`openUrl`, evt, `“${value}”`);
 		const url = URL.parse(value);
-		if (['https:', 'http:', 'ftp:', 'ftps:', 'sftp:', 'file:', 'data:', 'news:'].includes(url?.protocol)) {
+		if (['https:', 'http:', 'ftp:', 'ftps:', 'sftp:', 'file:', 'data:', 'blob:'].includes(url?.protocol)) {
 			this.el.setAttribute('selectable-node-graph', 'src', value);
 		} else if (value?.length > 0) {
 			this.urlInput.value = '';
@@ -219,6 +226,33 @@ AFRAME.registerComponent('selectable-node-graph', {
 			console.debug(`selectable-node-graph update:`, this.data, oldData);
 			this.fileInpt.value = '';
 
+			const spread = this.data.spread;
+			if (spread?.x > 0 && spread.x < Infinity &&
+					spread?.y > 0 && spread.y < Infinity &&
+					(spread?.x !== oldData.spread?.x || spread?.y !== oldData.spread?.y)) {
+				for (const child of Array.from(this.el.children)) {
+					const childNodeAttr = child.getAttribute('graph-node');
+					if (childNodeAttr) {
+						child.object3D.position.x = childNodeAttr.naturalPosition.x * spread.x;
+						child.object3D.position.z = childNodeAttr.naturalPosition.z * spread.x;
+						child.object3D.position.y = childNodeAttr.naturalPosition.y * spread.y;
+						continue;
+					}
+					const childEdgeAttr = child.getAttribute('graph-edge');
+					if (childEdgeAttr) {
+						const fromNode = document.getElementById(childEdgeAttr.fromId);
+						if (fromNode) {
+							child.setAttribute('graph-edge', 'start', fromNode.object3D.position);
+						}
+						const toNode = document.getElementById(childEdgeAttr.toId);
+						if (toNode) {
+							child.setAttribute('graph-edge', 'end', toNode.object3D.position);
+						}
+						continue;
+					}
+				}
+			}
+
 				if (!this.data.src && !oldData.src || this.data.src === oldData.src) { return; }
 
 			const spinner = document.getElementById(SPINNER_ID);
@@ -249,9 +283,10 @@ AFRAME.registerComponent('selectable-node-graph', {
 					this.showTransientMsg([...errors, ...warnings, ...info].join('\n'));
 				}
 
-				const presenterEl = document.querySelector('[presenter]')
-				presenterEl.emit('scalepresentation');
-				this.modelNeedsScaling = false;
+				setTimeout(() => {
+					this.adjustSpread();
+					this.el.emit('graph-loaded');
+				}, 0);
 			}).catch(err => {
 				console.error(`csvToNodes threw`, err);
 				this.showPersistentMsg(err);
@@ -263,7 +298,63 @@ AFRAME.registerComponent('selectable-node-graph', {
 				spinner?.removeState(STATE_SPINNING);
 			});
 		} catch (err) {
-			console.log(`selectable-node-graph update error:`, err);
+			console.error(`selectable-node-graph update error:`, err);
+		}
+	},
+
+	adjustSpread: function () {
+		const data = this.data;
+		const graphObj = this.el.object3D;
+		if (data.log) {
+			console.log("adjustSpread", data, this.el, graphObj);
+		}
+		graphObj.position.x = graphObj.position.y = graphObj.position.z = 0;
+		const boundingBox = new THREE.Box3();
+		boundingBox.setFromObject(graphObj);
+		const bbSize = new THREE.Vector3();
+		boundingBox.getSize(bbSize);
+
+		let spread = {x: 1, y: 1};
+		if (this.el.children.length > 1) {
+			const horizontalSize = Math.max(bbSize.x, bbSize.z);
+			if (horizontalSize < data.minInitialWidth) {
+				spread.x = Math.min(data.minInitialWidth / horizontalSize, 1000);
+			} else if (horizontalSize > data.maxInitialWidth) {
+				spread.x = Math.max(data.maxInitialWidth / horizontalSize, 0.000001);
+			}
+			if (bbSize.y < data.minInitialHeight) {
+				spread.y = Math.min(data.minInitialHeight / bbSize.y, 1000);
+			} else if (bbSize.y > data.maxInitialHeight) {
+				spread.y = Math.max(data.maxInitialHeight / bbSize.y, 0.000001);
+			}
+		}
+		console.log(`spreadGraph spread:`, spread, bbSize, boundingBox);
+
+		const offset = new THREE.Vector3();
+		boundingBox.getCenter(offset);
+		offset.x *= -spread.x;
+		offset.z *= -spread.x;
+		offset.y *= -spread.y;
+		offset.add(data.frameCenter);
+
+		if (data.log) {
+			console.log(`spreadGraph offset: ${JSON.stringify(offset)}`);
+		}
+
+		this.el.setAttribute('selectable-node-graph', 'spread', spread);
+		if (! offset.equals(graphObj.position)) {
+			this.el.setAttribute('position', offset);
+		}
+
+		if (this.boxHelper) {
+			this.el.sceneEl.object3D?.remove?.(this.boxHelper);
+		}
+		if (data.log) {
+			boundingBox.setFromObject(graphObj);
+			if (!boundingBox.isEmpty()) {
+				this.boxHelper = new THREE.Box3Helper( boundingBox, 0xffff00 );
+				this.el.sceneEl.object3D?.add?.(this.boxHelper);
+			}
 		}
 	},
 

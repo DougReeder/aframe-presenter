@@ -3,6 +3,7 @@ describe('csvToNodes', function() {
 
     beforeEach(function() {
         graphEl = document.createElement('a-entity');
+        graphEl.setAttribute('selectable-node-graph', 'spread', {x: 1, y: 1});
         document.querySelector('a-scene').appendChild(graphEl);
     });
 
@@ -29,10 +30,9 @@ describe('csvToNodes', function() {
         expect(nodeEl.object3D.position.x).to.equal(1);
         expect(nodeEl.object3D.position.y).to.equal(2);
         expect(nodeEl.object3D.position.z).to.equal(3);
-        expect(nodeEl.object3D.scale.x).to.equal(0.1);   // default
         expect(nodeEl.object3D.userData?.id).to.equal('node1');
         expect(nodeEl.getObject3D('mesh').geometry).to.have.property('type', 'SphereGeometry');
-        expect(nodeEl.getObject3D('mesh').geometry.parameters).to.have.property('radius', 1);
+        expect(nodeEl.getObject3D('mesh').geometry.parameters).to.have.property('radius', 0.025);
 
         const graphNodeAttr = nodeEl.getAttribute('graph-node');
         expect(graphNodeAttr.title).to.equal('Test Node');
@@ -40,9 +40,11 @@ describe('csvToNodes', function() {
         expect(graphNodeAttr.color).to.equal('#ff0000');
         expect(graphNodeAttr.opacity).to.equal(1.0);
         expect(graphNodeAttr.primitive).to.equal('sphere');
+        expect(graphNodeAttr.size).to.equal(0.05);
         expect(graphNodeAttr.imageUrl).to.equal('');
         expect(graphNodeAttr.linkUrl).to.equal('');
         expect(graphNodeAttr.collapsed).to.be.false;
+        expect(graphNodeAttr.naturalPosition).to.deep.equal({x: 1, y: 2, z: 3});
     });
 
     it('should parse a simple Noda CSV with one Diamond node w/ notes, ImageURL & PageURL', async function() {
@@ -62,10 +64,9 @@ describe('csvToNodes', function() {
         expect(nodeEl.object3D.position.x).to.equal(10);
         expect(nodeEl.object3D.position.y).to.equal(20);
         expect(nodeEl.object3D.position.z).to.equal(30);
-        expect(nodeEl.object3D.scale.x).to.equal(0.12);
         expect(nodeEl.object3D.userData?.id).to.equal('diamondNode');
         expect(nodeEl.getObject3D('mesh').geometry).to.have.property('type', 'OctahedronGeometry');
-        expect(nodeEl.getObject3D('mesh').geometry.parameters).to.have.property('radius', 1.1);
+        expect(nodeEl.getObject3D('mesh').geometry.parameters).to.have.property('radius', 0.033);
 
         const graphNodeAttr = nodeEl.getAttribute('graph-node');
         expect(graphNodeAttr.title).to.equal('Diamond Node');
@@ -73,9 +74,11 @@ describe('csvToNodes', function() {
         expect(graphNodeAttr.color).to.equal('#808080');
         expect(graphNodeAttr.opacity).to.equal(1.0);
         expect(graphNodeAttr.primitive).to.equal('octahedron');
+        expect(graphNodeAttr.size).to.equal(0.06);
         expect(graphNodeAttr.imageUrl).to.equal('https://example.com/pic');
         expect(graphNodeAttr.linkUrl).to.equal('https://example.org/page');
         expect(graphNodeAttr.collapsed).to.be.true;
+        expect(graphNodeAttr.naturalPosition).to.deep.equal({x: 10, y: 20, z: 30});
 
         expect(graphEl.children.length).to.equal(1);
     });
@@ -97,7 +100,6 @@ describe('csvToNodes', function() {
         expect(nodeEl.object3D.position.x).to.equal(0);
         expect(nodeEl.object3D.position.y).to.equal(0);
         expect(nodeEl.object3D.position.z).to.equal(69);
-        expect(nodeEl.object3D.scale.x).to.equal(0.10);   // default
         expect(nodeEl.object3D.userData?.id).to.equal('flatNode');
         expect(nodeEl.getObject3D('mesh').geometry).to.have.property('type', 'PlaneGeometry');
         expect(nodeEl.getObject3D('mesh').geometry.parameters).to.have.property('width', 0);
@@ -109,9 +111,11 @@ describe('csvToNodes', function() {
         expect(graphNodeAttr.color.toLowerCase()).to.equal('#ffffff');
         expect(graphNodeAttr.opacity).to.equal(1.0);
         expect(graphNodeAttr.primitive).to.equal('plane');
+        expect(graphNodeAttr.size).to.equal(0.05);
         expect(graphNodeAttr.imageUrl).to.equal('');
         expect(graphNodeAttr.linkUrl).to.equal('');
         expect(graphNodeAttr.collapsed).to.be.false;
+        expect(graphNodeAttr.naturalPosition).to.deep.equal({x: 0, y: 0, z: 69});
 
         expect(graphEl.children.length).to.equal(1);
     });
@@ -119,8 +123,8 @@ describe('csvToNodes', function() {
 
     it('should parse a Noda CSV with nodes and edges', async function() {
         const csvData = 'Uuid,Title,PositionX,PositionY,PositionZ,FromUuid,ToUuid\n' +
-                        'n1,Node 1,1,1,1,,\n' +
-                        'n2,Node 2,2,2,2,,\n' +
+                        'n1,Node 1,11,12,13,,\n' +
+                        'n2,Node 2,21,22,23,,\n' +
                         'e1,Edge 1,,,,n1,n2';
         const blob = new Blob([csvData], { type: 'text/csv' });
         blobUrl = URL.createObjectURL(blob);
@@ -133,23 +137,21 @@ describe('csvToNodes', function() {
         const nodes = Array.from(graphEl.children).filter(el => el.hasAttribute('graph-node') && el.getAttribute('id') && el.getAttribute('id').startsWith('n'));
         expect(nodes.length).to.equal(2);
 
-        // Edges are added to graphEl.object3D (the 'graph')
-        const graph = graphEl.object3D;
-        const edges = graph.children.filter(child => child.type === 'Line');
+        const edges = Array.from(graphEl.children).filter(el => el.hasAttribute('graph-edge'));
         expect(edges.length).to.equal(1);
-        expect(edges[0].name).to.equal('Edge 1');
-        const geometry = edges[0].geometry;
-        const positions = geometry.attributes.position.array;
+        expect(edges[0].getAttribute('id')).to.equal('e1');
 
-        // Check start point (n1 at 1,1,1)
-        expect(positions[0]).to.equal(1);
-        expect(positions[1]).to.equal(1);
-        expect(positions[2]).to.equal(1);
+        const edgeAttr = edges[0].getAttribute('graph-edge');
+        expect(edgeAttr.title).to.equal('Edge 1');
+        expect(edgeAttr.fromId).to.equal('n1');
+        expect(edgeAttr.start.x).to.equal(11);
+        expect(edgeAttr.start.y).to.equal(12);
+        expect(edgeAttr.start.z).to.equal(13);
+        expect(edgeAttr.toId).to.equal('n2');
+        expect(edgeAttr.end.x).to.equal(21);
+        expect(edgeAttr.end.y).to.equal(22);
+        expect(edgeAttr.end.z).to.equal(23);
 
-        // Check end point (n2 at 2,2,2)
-        expect(positions[3]).to.equal(2);
-        expect(positions[4]).to.equal(2);
-        expect(positions[5]).to.equal(2);
     });
 
     it('should not create edge missing "from" node, and warn', async function() {
@@ -167,8 +169,7 @@ describe('csvToNodes', function() {
         expect(result.warnings.some(w => w.includes('can\'t find “from” node'))).to.be.true;
         expect(result.info.length).to.equal(1);
 
-        const graph = graphEl.object3D;
-        const edges = graph.children.filter(child => child.type === 'Line');
+        const edges = Array.from(graphEl.children).filter(el => el.hasAttribute('graph-edge'));
         expect(edges.length).to.equal(0);
     });
 
@@ -187,9 +188,8 @@ describe('csvToNodes', function() {
         expect(result.warnings.some(w => w.includes('can\'t find “to” node'))).to.be.true;
         expect(result.info.length).to.equal(1);
 
-        const graph = graphEl.object3D;
-        const edges = graph.children.filter(child => child.type === 'Line');
-        expect(edges.length).to.equal(0);
+        const edges2 = Array.from(graphEl.children).filter(el => el.hasAttribute('graph-edge'));
+        expect(edges2.length).to.equal(0);
     });
 
     it('should not create edge missing both nodes, and warn', async function() {
@@ -205,8 +205,7 @@ describe('csvToNodes', function() {
         expect(result.warnings.some(w => w.includes('can\'t find “from” node'))).to.be.true;
         expect(result.info.length).to.equal(1);
 
-        const graph = graphEl.object3D;
-        const edges = graph.children.filter(child => child.type === 'Line');
-        expect(edges.length).to.equal(0);
+        const edges3 = Array.from(graphEl.children).filter(el => el.hasAttribute('graph-edge'));
+        expect(edges3.length).to.equal(0);
     });
 });

@@ -11,7 +11,9 @@ AFRAME.registerComponent('graph-node', {
     color: {type: 'color'},
     opacity: {default: 1.0},
     primitive: {default: 'box'},
+    size: {default: 0.05},
     collapsed: {default: false},
+    naturalPosition: {type: 'vec3'},
   },
 
   event: {
@@ -20,7 +22,7 @@ AFRAME.registerComponent('graph-node', {
   init: function () {
     console.debug(`graph-node init `, this.data);
 
-    this.setNodeGeometry(this.data.primitive);
+    this.setNodeGeometry(this.data.primitive, this.data.size);
     this.setNodeMaterial(this.data.color, this.data.opacity, this.data.primitive === 'plane');
   },
 
@@ -31,7 +33,7 @@ AFRAME.registerComponent('graph-node', {
       if (this.el.components.geometry) {
         this.el.getObject3D('mesh')?.geometry?.dispose?.();
       }
-      this.setNodeGeometry(this.data.primitive);
+      this.setNodeGeometry(this.data.primitive, this.data.size);
     }
     if (this.data.color !== oldData.color || this.data.opacity !== oldData.opacity) {
       if (this.el.components.material) {
@@ -47,37 +49,37 @@ AFRAME.registerComponent('graph-node', {
       this.setNodeMaterial(this.data.color, this.data.opacity, this.data.primitive === 'plane');
     }
     if ((this.data.title || oldData.title) && this.data.title !== oldData.title) {
-      this.setNodeTitle(this.data.title, this.data.primitive === 'plane');
+      this.setNodeTitle(this.data.title, this.data.size, this.data.primitive === 'plane');
     }
     if ((this.data.notes || oldData.notes) && this.data.notes !== oldData.notes ) {
-      this.setNotesChild(this.data.notes);
+      this.setNotesChild(this.data.notes, this.data.size);
     }
     if ((this.data.linkUrl || oldData.linkUrl) && this.data.linkUrl !== oldData.linkUrl) {
-      this.setLinkChild(this.data.linkUrl);
+      this.setLinkChild(this.data.linkUrl, this.data.size);
     }
   },
 
-  setNodeGeometry: function (primitive) {
+  setNodeGeometry: function (primitive, size) {
     switch (primitive) {
       case 'sphere':
-        this.el.setAttribute('geometry', {primitive: 'sphere'});
+        this.el.setAttribute('geometry', {primitive: 'sphere', radius: size/2});
         return;
       case 'box':
-        const boxLength = (Math.sin(Math.PI / 4) + 1);
+        const boxLength =  size * (Math.sin(Math.PI / 4) + 1) / 2;
         this.el.setAttribute('geometry', {primitive: 'box', width: boxLength, height: boxLength, depth: boxLength});
         return;
       case 'tetrahedron':
-        this.el.setAttribute('geometry', {primitive: 'tetrahedron', radius: 1.3});   // fudge factor
+        this.el.setAttribute('geometry', {primitive: 'tetrahedron', radius: size * 1.3 / 2});   // fudge factor
         return;
       case 'cylinder':
-        const cylinderSize = (Math.sin(Math.PI / 4) + 1) / 2;
-        this.el.setAttribute('geometry', {primitive: 'cylinder', radius: cylinderSize, height: cylinderSize * 2});
+        const cylinderHeight = size * (Math.sin(Math.PI / 4) + 1) / 2;
+        this.el.setAttribute('geometry', {primitive: 'cylinder', radius: cylinderHeight / 2, height: cylinderHeight});
         return;
       case 'octahedron':   // octahedron
-        this.el.setAttribute('geometry', {primitive: 'octahedron', radius: 1.1});   // fudge factor
+        this.el.setAttribute('geometry', {primitive: 'octahedron', radius: size * 1.1 / 2});   // fudge factor
         return;
       case 'cone':
-        this.el.setAttribute('geometry', {primitive: 'cone', radiusTop: 0});
+        this.el.setAttribute('geometry', {primitive: 'cone', height: size,  radiusTop: 0, radiusBottom: size / 2});
         return;
       // case 'Hourglass': // hourglass
       //   const hourglassCoordinate = (Math.sin(Math.PI / 4) + 1) / 2;
@@ -101,7 +103,7 @@ AFRAME.registerComponent('graph-node', {
         this.el.setAttribute('geometry', {primitive: 'plane', width: 0, height: 0});   // adapts to title
         return;
       default:
-        this.el.setAttribute('geometry', {primitive: 'torusKnot' /*, radius: size, radiusTubular: 0.3*size*/});
+        this.el.setAttribute('geometry', {primitive: 'torusKnot' , radius: size / 2, radiusTubular: 0.3 * size / 2});
         return;
     }
   },
@@ -114,25 +116,25 @@ AFRAME.registerComponent('graph-node', {
     });
   },
 
-  setNodeTitle: function (title, isFlat = false) {
-    const wrapCount = 50;
+  setNodeTitle: function (title, size, isFlat = false) {
     this.el.setAttribute('text', {
       value: title /*+ '\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n '*/,
-      zOffset: isFlat ? 0.001 : 1.010,
+      zOffset: isFlat ? 0.001 : size / 2 + 0.005,
       align: 'center',
-      width: 6, /*height: 1,*/
-      wrapCount: isFlat ? 20 : 50,
+      width: size * 6, /*height: 1,*/
+      wrapCount: 25,
       side: 'double'});
   },
 
-  setNotesChild: function (notes) {
+  setNotesChild: function (notes, size) {
     this.el.querySelector('a-text')?.remove();
     if (!notes) return;
 
     const textEl = document.createElement('a-text');
-    textEl.object3D.position.set(0, 1.5, 0);
+    textEl.object3D.position.set(0, size, 0);
     textEl.setAttribute('value', notes);
-    textEl.setAttribute('width', 3);
+    textEl.setAttribute('width', size * 4);
+    textEl.setAttribute('wrap-count', 25);
     textEl.setAttribute('anchor', 'center');
     textEl.setAttribute('baseline', 'center');
 
@@ -142,12 +144,13 @@ AFRAME.registerComponent('graph-node', {
     this.el.appendChild(textEl);
   },
 
-  setLinkChild: function (linkUrl) {
+  setLinkChild: function (linkUrl, size) {
     this.el.querySelector('a-link')?.remove();
     if (!linkUrl) return;
 
     const linkEl = document.createElement('a-link');
-    linkEl.object3D.position.set(0, -2.2, 0);
+    linkEl.object3D.position.set(0, -(size/2 + 0.04), 0);
+    linkEl.object3D.scale.set(0.025, 0.025, 0.025);
     linkEl.setAttribute('href', linkUrl);
     linkEl.setAttribute('title', ".");
     linkEl.setAttribute('image', "https://dougreeder.github.io/elfland-glider/city/screenshot.png");

@@ -1,0 +1,199 @@
+describe('selectable-node-graph component', function() {
+    let el, blobUrl;
+
+    beforeEach(function(done) {
+        el = document.createElement('a-entity');
+        el.setAttribute('selectable-node-graph', '');
+        const scene = document.querySelector('a-scene');
+        scene.appendChild(el);
+        // waits for component to initialize
+        if (el.hasLoaded) {
+            done();
+        } else {
+            el.addEventListener('loaded', () => done());
+        }
+    });
+
+    afterEach(function() {
+        if (blobUrl) {
+            URL.revokeObjectURL(blobUrl);
+            blobUrl = null;
+        }
+        if (el && el.parentNode) {
+            el.parentNode.removeChild(el);
+        }
+    });
+
+    it('should initialize with default properties and create UI elements', function() {
+        const component = el.components['selectable-node-graph'];
+        expect(component).to.exist;
+        expect(component.data.flavorCsv).to.equal('NODA');
+        expect(component.data.spread).to.deep.equal({x: 1, y: 1});
+
+        // Check if UI elements were created and added to body
+        expect(component.controlStrip).to.exist;
+        expect(component.controlStrip.parentNode).to.equal(document.body);
+        expect(component.fileInpt).to.exist;
+        expect(component.fileInpt.parentNode).to.equal(document.body);
+    });
+
+    it('should load nodes when src is updated', async function() {
+        const csvData = 'Uuid,Title,PositionX,PositionY,PositionZ,Color,Size,Shape,Collapsed\n' +
+                        'node1,Test Node,11,22,33,ff0000,5,Ball,No';
+        const blob = new Blob([csvData], { type: 'text/csv' });
+        blobUrl = URL.createObjectURL(blob);
+
+        el.setAttribute('selectable-node-graph', 'src', blobUrl);
+
+        // waits for the async update to complete
+        await new Promise(resolve => {
+            const handleLoaded = () => {
+                el.removeEventListener('graph-loaded', handleLoaded);
+                resolve();
+            };
+            el.addEventListener('graph-loaded', handleLoaded);
+        });
+
+        // with one node, spread should be 1
+        expect(el.getAttribute('selectable-node-graph').spread).to.deep.equal({x: 1, y: 1});
+
+        expect(el.children.length).to.equal(1);
+        const nodeEl = el.children[0];
+        expect(nodeEl.getAttribute('id')).to.equal('node1');
+        expect(nodeEl.object3D.position.x).to.equal(11);   // 1 node -> spread 1
+        expect(nodeEl.object3D.position.y).to.equal(22);
+        expect(nodeEl.object3D.position.z).to.equal(33);
+
+        // graph should be centered on the only node
+        expect(el.object3D.position.x).to.equal(-11);
+        expect(el.object3D.position.y).to.equal(1.25 - 22);
+        expect(el.object3D.position.z).to.be.closeTo(-33, 0.003);
+    });
+
+    it('should update node positions when spread changes', async function() {
+        const csvData = 'Uuid,Title,PositionX,PositionY,PositionZ,Color,Size,Shape,Collapsed\n' +
+                        'node1,Test Node,1,2,3,ff0000,5,Ball,No';
+        const blob = new Blob([csvData], { type: 'text/csv' });
+        blobUrl = URL.createObjectURL(blob);
+
+        el.setAttribute('selectable-node-graph', 'src', blobUrl);
+
+        // waits for the async update to complete
+        await new Promise(resolve => {
+            const handleLoaded = () => {
+                el.removeEventListener('graph-loaded', handleLoaded);
+                resolve();
+            };
+            el.addEventListener('graph-loaded', handleLoaded);
+        });
+
+        const nodeEl = el.children[0];
+        expect(nodeEl.object3D.position.x).to.equal(1);
+        expect(nodeEl.object3D.position.y).to.equal(2);
+        expect(nodeEl.object3D.position.z).to.equal(3);
+
+        // Change spread
+        el.setAttribute('selectable-node-graph', 'spread', {x: 2, y: 3});
+
+        // spread update is sync for positions
+        expect(nodeEl.object3D.position.x).to.equal(2); // 1 * 2
+        expect(nodeEl.object3D.position.y).to.equal(6); // 2 * 3
+        expect(nodeEl.object3D.position.z).to.equal(6); // 3 * 2 (spread.x is used for z)
+    });
+
+    it('should adjust spread of multiple nodes', async function() {
+        const csvData = 'Uuid,Title,PositionX,PositionY,PositionZ,Color,Size,Shape,Collapsed\n' +
+            'nodeErste,Node Erste,6,0.1,8,ff0000,5,Ball,No\n' +
+            'nodeZwitte,Node Zwitte,-2, -0.2, -4,ff0000,5,Ball,No\n';
+        const blob = new Blob([csvData], { type: 'text/csv' });
+        blobUrl = URL.createObjectURL(blob);
+
+        el.setAttribute('selectable-node-graph', 'src', blobUrl);
+
+        // waits for the async update to complete
+        await new Promise(resolve => {
+            const handleLoaded = () => {
+                el.removeEventListener('graph-loaded', handleLoaded);
+                resolve();
+            };
+            el.addEventListener('graph-loaded', handleLoaded);
+        });
+
+        // with multiple nodes, spread should ensure they fit
+        const spread = el.getAttribute('selectable-node-graph').spread;
+        const expectedSpread = {x: 5/(8-(-4)+0.05), y: 0.5/(0.1-(-0.2)+0.05)}; // z width is bigger
+        // TODO: why must the delta be so small?
+        expect(spread.x).to.be.closeTo(expectedSpread.x, 0.001);
+        expect(spread.y).to.be.closeTo(expectedSpread.y, 0.000001);
+
+        expect(el.children.length).to.equal(2);
+        const nodeErsteEl = el.children[0];
+        expect(nodeErsteEl.getAttribute('id')).to.equal('nodeErste');
+        expect(nodeErsteEl.object3D.position.x).to.equal(6 * spread.x);
+        expect(nodeErsteEl.object3D.position.y).to.equal(0.1 * spread.y);
+        expect(nodeErsteEl.object3D.position.z).to.equal(8 * spread.x);
+        const nodeZwitteEl = el.children[1];
+        expect(nodeZwitteEl.getAttribute('id')).to.equal('nodeZwitte');
+        expect(nodeZwitteEl.object3D.position.x).to.equal(-2 * spread.x);
+        expect(nodeZwitteEl.object3D.position.y).to.equal(-0.2 * spread.y);
+        expect(nodeZwitteEl.object3D.position.z).to.equal(-4 * spread.x);
+
+        // graph should be centered on the centerpoint of the nodes
+        expect(el.object3D.position.x).to.be.closeTo((6+(-2))/2 * -spread.x, 0.002);
+        expect(el.object3D.position.y).to.equal((0.1+(-0.2))/2 * -spread.y + 1.25);
+        expect(el.object3D.position.z).to.be.closeTo((8+(-4))/2 * -spread.x, 0.002);
+    });
+
+    it('should handle URL input change', function() {
+        const csvData = 'Uuid,Title,PositionX,PositionY,PositionZ,Color,Size,Shape,Collapsed\n' +
+            'urlChangeNode,URL Change Node,42,69,21,a0a0a0,7,Tetra,No';
+        var dataUrl = "data:text/csv;base64," + btoa(csvData);
+
+        const component = el.components['selectable-node-graph'];
+        const urlInput = component.urlInput;
+        urlInput.value = dataUrl;
+
+        // Mocking openUrl behavior since it's triggered by event
+        component.openUrl();
+
+        expect(el.getAttribute('selectable-node-graph').src).to.equal(dataUrl);
+    });
+
+    it('should handle file input change', async function() {
+        // monkey patches scene to prevent warning about Multisynq API
+        const scene = document.querySelector('a-scene');
+        scene.croquetSession = {data: { store: () => {} } };
+
+        const component = el.components['selectable-node-graph'];
+        const fileInpt = component.fileInpt;
+
+        const csvData = 'Uuid,Title,PositionX,PositionY,PositionZ,Color,Size,Shape,Collapsed\n' +
+                        'fileNode,File Node,4,5,6,00ff00,5,Ball,No';
+        const file = new File([csvData], "test.csv", { type: "text/csv" });
+
+        // Manually trigger fileInptChange with a mocked event or by setting files
+        // Note: setting files on input is tricky in JS, but we can call the handler
+
+        // Mock fileInpt.files
+        Object.defineProperty(fileInpt, 'files', {
+            value: [file],
+            writable: false
+        });
+
+        await component.fileInptChange();
+
+        // waits for the async update to complete
+        await new Promise(resolve => {
+            const handleLoaded = () => {
+                el.removeEventListener('graph-loaded', handleLoaded);
+                resolve();
+            };
+            el.addEventListener('graph-loaded', handleLoaded);
+        });
+
+        expect(el.children.length).to.be.at.least(1);
+        const nodeEl = Array.from(el.children).find(child => child.getAttribute('id') === 'fileNode');
+        expect(nodeEl).to.exist;
+        expect(nodeEl.object3D.position.x).to.equal(4);
+    });
+});
