@@ -1,6 +1,7 @@
 // selectable-model.js — a component and primitive with UI to load a 3-D model
-// Copyright © 2025 by Doug Reeder under the MIT License
+// Copyright © 2025–2026 by Doug Reeder under the MIT License
 
+const SCALING_FACTOR = 1.1;
 const FILE_INPT_ID = 'fileInput';
 // maximum size of base64-encoded data url w/ 13 required chars + MIME type
 const BASE64_CROQUET_MAX = 16384/4*3 - 13 - 255;
@@ -15,6 +16,8 @@ AFRAME.registerComponent('selectable-model', {
 	schema: {
 		src: {type: 'asset'},
 		animate: {default: false},
+		frameCenter: {type: 'vec3', default: {x: 0, y: 1, z: 0}},
+		log: {default: false},
 	},
 
 	/** Called once when component is attached. Generally for initial setup. */
@@ -29,6 +32,10 @@ AFRAME.registerComponent('selectable-model', {
 		this.handlers.animateChange = this.animateChange.bind(this);
 		this.handlers.spinnerStateAdded = this.spinnerStateAdded.bind(this);
 		this.handlers.spinnerStateRemoved = this.spinnerStateRemoved.bind(this);
+		this.handlers.horizontalLarger = this.horizontalLarger.bind(this);
+		this.handlers.horizontalSmaller = this.horizontalSmaller.bind(this);
+		this.handlers.verticalLarger = this.verticalLarger.bind(this);
+		this.handlers.verticalSmaller = this.verticalSmaller.bind(this);
 
 		const controlStrip = document.createElement('div');
 		controlStrip.style.width = 'calc(100% - 1em - 65px)';
@@ -122,6 +129,11 @@ AFRAME.registerComponent('selectable-model', {
 		spinner.addEventListener('stateremoved', this.handlers.spinnerStateRemoved);
 
 		spinner?.addState(STATE_SPINNING);   // marks where model will be placed
+
+		this.el.addEventListener('horizontal-larger', this.handlers.horizontalLarger);
+		this.el.addEventListener('horizontal-smaller', this.handlers.horizontalSmaller);
+		this.el.addEventListener('vertical-larger', this.handlers.verticalLarger);
+		this.el.addEventListener('vertical-smaller', this.handlers.verticalSmaller);
 	},
 
 	handlers: {},
@@ -326,6 +338,92 @@ AFRAME.registerComponent('selectable-model', {
 		}
 	},
 
+	horizontalLarger: function (_evt) {
+		const data = this.data;
+
+		const modelObj = this.el.object3D;
+
+		const scale = {x: modelObj.scale.x * SCALING_FACTOR, y: modelObj.scale.y, z: modelObj.scale.z * SCALING_FACTOR}
+
+		const offset = new THREE.Vector3();
+		offset.copy(modelObj.position).sub(data.frameCenter)
+		offset.x *= SCALING_FACTOR;
+		offset.z *= SCALING_FACTOR;
+		if (data.log) {
+			console.log(`selectable-model horizontalLarger scale: ${JSON.stringify(scale)}  offset: ${JSON.stringify(offset)}`);
+		}
+		offset.add(data.frameCenter);
+
+		this.el.setAttribute('scale', scale);
+		if (! offset.equals(modelObj.position)) {
+			this.el.setAttribute('position', offset);
+		}
+	},
+
+	horizontalSmaller: function (_evt) {
+		const data = this.data;
+
+		const modelObj = this.el.object3D;
+
+		const scale = {x: modelObj.scale.x / SCALING_FACTOR, y: modelObj.scale.y, z: modelObj.scale.z / SCALING_FACTOR}
+
+		const offset = new THREE.Vector3();
+		offset.copy(modelObj.position).sub(data.frameCenter)
+		offset.x /= SCALING_FACTOR;
+		offset.z /= SCALING_FACTOR;
+		if (data.log) {
+			console.log(`selectable-model horizontalSmaller scale: ${JSON.stringify(scale)}  offset: ${JSON.stringify(offset)}`);
+		}
+		offset.add(data.frameCenter);
+
+		this.el.setAttribute('scale', scale);
+		if (! offset.equals(modelObj.position)) {
+			this.el.setAttribute('position', offset);
+		}
+	},
+
+	verticalLarger: function (_evt) {
+		const data = this.data;
+
+		const modelObj = this.el.object3D;
+
+		const scale = {x: modelObj.scale.x, y: modelObj.scale.y * SCALING_FACTOR, z: modelObj.scale.z}
+
+		const offset = new THREE.Vector3();
+		offset.copy(modelObj.position).sub(data.frameCenter)
+		offset.y *= SCALING_FACTOR;
+		if (data.log) {
+			console.log(`selectable-model verticalLarger scale: ${JSON.stringify(scale)}  offset: ${JSON.stringify(offset)}`);
+		}
+		offset.add(data.frameCenter);
+
+		this.el.setAttribute('scale', scale);
+		if (! offset.equals(modelObj.position)) {
+			this.el.setAttribute('position', offset);
+		}
+	},
+
+	verticalSmaller: function (_evt) {
+		const data = this.data;
+
+		const modelObj = this.el.object3D;
+
+		const scale = {x: modelObj.scale.x, y: modelObj.scale.y / SCALING_FACTOR, z: modelObj.scale.z};
+
+		const offset = new THREE.Vector3();
+		offset.copy(modelObj.position).sub(data.frameCenter)
+		offset.y /= SCALING_FACTOR;
+		if (data.log) {
+			console.log(`selectable-model verticalSmaller scale: ${JSON.stringify(scale)}  offset: ${JSON.stringify(offset)}`);
+		}
+		offset.add(data.frameCenter);
+
+		this.el.setAttribute('scale', scale);
+		if (! offset.equals(modelObj.position)) {
+			this.el.setAttribute('position', offset);
+		}
+	},
+
 	pause: function () {
 	},
 
@@ -346,6 +444,10 @@ AFRAME.registerComponent('selectable-model', {
 
 		this.el.removeEventListener('model-loaded', this.handlers.modelLoaded);
 		this.el.removeEventListener('model-error', this.handlers.modelError);
+		this.el.removeEventListener('horizontal-larger', this.handlers.horizontalLarger);
+		this.el.removeEventListener('horizontal-smaller', this.handlers.horizontalSmaller);
+		this.el.removeEventListener('vertical-larger', this.handlers.verticalLarger);
+		this.el.removeEventListener('vertical-smaller', this.handlers.verticalSmaller);
 
 		const spinner = document.getElementById(SPINNER_ID);
 		if (spinner) {

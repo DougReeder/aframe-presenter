@@ -1,10 +1,9 @@
 // aframe-presenter.js — A component and primitive to re-scale a presentation, provide cursors & markers
 // and present to a group using the Multisynq network
-// Copyright © 2024–2025 by Doug Reeder under the MIT License
+// Copyright © 2024–2026 by Doug Reeder under the MIT License
 
 /* global AFRAME, THREE */
 
-const SCALING_FACTOR = 1.1;
 const CROQUET_DELAY = 17;
 const FALLBACK_COLOR = '#ccc';
 const PRESENTATION_CLASS = 'presentation';
@@ -41,10 +40,10 @@ AFRAME.registerComponent('presenter', {
 		this.handlers.showHelp = this.showPersistentMsg.bind(this, HELP_TEXT);
 		this.handlers.userAdded = this.userAdded.bind(this);
 		this.handlers.userExit = this.userExit.bind(this);
-		this.handlers.horizontalLarger = this.horizontalLarger.bind(this);
-		this.handlers.horizontalSmaller = this.horizontalSmaller.bind(this);
-		this.handlers.verticalLarger = this.verticalLarger.bind(this);
-		this.handlers.verticalSmaller = this.verticalSmaller.bind(this);
+		this.handlers.horizontalLarger = this.emitEventOnPresentation.bind(this, 'horizontal-larger');
+		this.handlers.horizontalSmaller = this.emitEventOnPresentation.bind(this, 'horizontal-smaller');
+		this.handlers.verticalLarger = this.emitEventOnPresentation.bind(this, 'vertical-larger');
+		this.handlers.verticalSmaller = this.emitEventOnPresentation.bind(this, 'vertical-smaller');
 		this.handlers.keyDown = this.keyDown.bind(this);
 		this.handlers.beginCursorLeft = this.beginCursor.bind(this, CURSOR_PREFIX_LEFT);
 		this.handlers.beginCursorRight = this.beginCursor.bind(this, CURSOR_PREFIX_RIGHT);
@@ -291,112 +290,28 @@ In hand-tracking mode, pinch to display pointer.`;
 		}
 	},
 
-	horizontalLarger: function (_evt) {
-		const data = this.data;
-
-		const presentation = document.getElementById(data.presentationId);
-		const presentationObj = presentation.object3D;
-
-		const scale = {x: presentationObj.scale.x * SCALING_FACTOR, y: presentationObj.scale.y, z: presentationObj.scale.z * SCALING_FACTOR}
-
-		const offset = new THREE.Vector3();
-		offset.copy(presentationObj.position).sub(data.frameCenter)
-		offset.x *= SCALING_FACTOR;
-		offset.z *= SCALING_FACTOR;
-		if (data.log) {
-			console.log(`presenter horizontalLarger scale: ${JSON.stringify(scale)}  offset: ${JSON.stringify(offset)}`);
-		}
-		offset.add(data.frameCenter);
-
-		presentation.setAttribute('scale', scale);
-		if (! offset.equals(presentationObj.position)) {
-			presentation.setAttribute('position', offset);
-		}
-	},
-
-	horizontalSmaller: function (_evt) {
-		const data = this.data;
-
-		const presentation = document.getElementById(data.presentationId);
-		const presentationObj = presentation.object3D;
-
-		const scale = {x: presentationObj.scale.x / SCALING_FACTOR, y: presentationObj.scale.y, z: presentationObj.scale.z / SCALING_FACTOR}
-
-		const offset = new THREE.Vector3();
-		offset.copy(presentationObj.position).sub(data.frameCenter)
-		offset.x /= SCALING_FACTOR;
-		offset.z /= SCALING_FACTOR;
-		if (data.log) {
-			console.log(`presenter horizontalSmaller scale: ${JSON.stringify(scale)}  offset: ${JSON.stringify(offset)}`);
-		}
-		offset.add(data.frameCenter);
-
-		presentation.setAttribute('scale', scale);
-		if (! offset.equals(presentationObj.position)) {
-			presentation.setAttribute('position', offset);
-		}
-	},
-
-	verticalLarger: function (_evt) {
-		const data = this.data;
-
-		const presentation = document.getElementById(data.presentationId);
-		const presentationObj = presentation.object3D;
-
-		const scale = {x: presentationObj.scale.x, y: presentationObj.scale.y * SCALING_FACTOR, z: presentationObj.scale.z}
-
-		const offset = new THREE.Vector3();
-		offset.copy(presentationObj.position).sub(data.frameCenter)
-		offset.y *= SCALING_FACTOR;
-		if (data.log) {
-			console.log(`presenter verticalLarger scale: ${JSON.stringify(scale)}  offset: ${JSON.stringify(offset)}`);
-		}
-		offset.add(data.frameCenter);
-
-		presentation.setAttribute('scale', scale);
-		if (! offset.equals(presentationObj.position)) {
-			presentation.setAttribute('position', offset);
-		}
-	},
-
-	verticalSmaller: function (_evt) {
-		const data = this.data;
-
-		const presentation = document.getElementById(data.presentationId);
-		const presentationObj = presentation.object3D;
-
-		const scale = {x: presentationObj.scale.x, y: presentationObj.scale.y / SCALING_FACTOR, z: presentationObj.scale.z};
-
-		const offset = new THREE.Vector3();
-		offset.copy(presentationObj.position).sub(data.frameCenter)
-		offset.y /= SCALING_FACTOR;
-		if (data.log) {
-			console.log(`presenter verticalSmaller scale: ${JSON.stringify(scale)}  offset: ${JSON.stringify(offset)}`);
-		}
-		offset.add(data.frameCenter);
-
-		presentation.setAttribute('scale', scale);
-		if (! offset.equals(presentationObj.position)) {
-			presentation.setAttribute('position', offset);
-		}
+	emitEventOnPresentation: function (type, evt) {
+		const presentation = document.getElementById(this.data.presentationId);
+		presentation?.emit(type, evt);
 	},
 
 	keyDown: function (evt) {
 		if (evt.metaKey || document.activeElement !== document.body) {
 			return;
 		}
+
 		switch (evt.key) {
 			case "[":
-				this.horizontalLarger(evt);
+				this.handlers.horizontalLarger();
 				break;
 			case "]":
-				this.horizontalSmaller(evt);
+				this.handlers.horizontalSmaller();
 				break;
 			case "-":
-				this.verticalLarger(evt);
+				this.handlers.verticalLarger();
 				break;
 			case "=":
-				this.verticalSmaller(evt);
+				this.handlers.verticalSmaller();
 				break;
 			// default:
 			// 	console.log(`no handling for “${evt.key}”`)
