@@ -254,6 +254,11 @@ AFRAME.registerComponent('selectable-node-graph', {
 			}
 
 			if (!this.data.src && !oldData.src || this.data.src === oldData.src) { return; }
+			// deal with weirdness from A-Frame Croquet Component
+			if (/data:/.test(this.data.src) && this.data.src?.indexOf(',') === -1) {
+				console.warn(`ignoring bad data URL:`, this.data.src);
+				return;
+			}
 
 			const loadToken = Symbol(this.data.src);
 			this.currentLoadToken = loadToken;
