@@ -221,7 +221,7 @@ AFRAME.registerComponent('selectable-node-graph', {
 	},
 
 	/** Called when properties are changed, incl. right after init */
-	update: async function (oldData) {
+	update: async function (oldData = {}) {
 		try {
 			console.debug(`selectable-node-graph update:`, this.data, oldData);
 			this.fileInpt.value = '';
@@ -253,8 +253,10 @@ AFRAME.registerComponent('selectable-node-graph', {
 				}
 			}
 
-				if (!this.data.src && !oldData.src || this.data.src === oldData.src) { return; }
+			if (!this.data.src && !oldData.src || this.data.src === oldData.src) { return; }
 
+			const loadToken = Symbol(this.data.src);
+			this.currentLoadToken = loadToken;
 			const spinner = document.getElementById(SPINNER_ID);
 			spinner?.addState(STATE_SPINNING);
 
@@ -265,36 +267,50 @@ AFRAME.registerComponent('selectable-node-graph', {
 
 			let graphUrl = this.data.src;
 
-			if (graphUrl.startsWith('multisynq:')) {
+			if (graphUrl?.startsWith?.('multisynq:')) {
 				const dataIF = this.el.sceneEl.croquetSession?.data;
 				const handle = dataIF.fromId(graphUrl.slice('multisynq:'.length));
 				const byteArray = await dataIF.fetch(handle);
+				if (this.currentLoadToken !== loadToken) {
+					console.warn(`abandoned slow load of ${graphUrl}`);
+					return;
+				}
 				const blob = new Blob([byteArray], {type: 'text/csv'});
-				this.objectUrl = URL.createObjectURL(blob);
-				graphUrl = this.objectUrl;
+				graphUrl = URL.createObjectURL(blob);
 			}
 
-			console.log(`selectable-node-graph update graph src: “${graphUrl}”`)
+			console.log(`selectable-node-graph update graph src: "${graphUrl}"`);
 			this.clearPersistentMsg();
 
 			csvToNodes(graphUrl, this.data.flavorCsv, this.el).then(({errors, warnings, info}) => {
+				if (this.currentLoadToken !== loadToken) {
+					console.warn(`abandoned slow load of ${graphUrl}`);
+					return;
+				}
 				console.log(`selectable-node-graph new elements:`, this.el.children);
 				if (errors?.length > 0 || warnings?.length > 0 || info?.length > 0) {
 					this.showTransientMsg([...errors, ...warnings, ...info].join('\n'));
 				}
 
 				setTimeout(() => {
-					this.adjustSpread();
-					this.el.emit('graph-loaded');
+					try {
+						if (this.currentLoadToken !== loadToken) {
+							console.warn(`abandoned slow load of ${graphUrl}`);
+							return;
+						}
+						this.adjustSpread();
+						this.el.emit('graph-loaded');
+					} catch (err) {
+						console.error(`selectable-node-graph update spread:`, err);
+						this.showTransientMsg("spread not adjusted");
+					}
 				}, 0);
 			}).catch(err => {
 				console.error(`csvToNodes threw`, err);
 				this.showPersistentMsg(err);
 			}).finally(() => {
-				if (this.objectUrl) {
-					URL.revokeObjectURL(this.objectUrl);
-					this.objectUrl = null;
-				}
+				// presumes PapaParse is done with CSV data
+				URL.revokeObjectURL(graphUrl); // ok if not ObjectURL
 				spinner?.removeState(STATE_SPINNING);
 			});
 		} catch (err) {
