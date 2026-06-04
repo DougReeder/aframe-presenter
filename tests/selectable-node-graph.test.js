@@ -28,7 +28,8 @@ describe('selectable-node-graph component', function() {
         const component = el.components['selectable-node-graph'];
         expect(component).to.exist;
         expect(component.data.flavorCsv).to.equal('NODA');
-        expect(component.data.spread).to.deep.equal({x: 1, y: 1});
+        expect(component.data.spreadHoriz).to.equal(1);
+        expect(component.data.spreadVert).to.equal(1);
 
         // Check if UI elements were created and added to body
         expect(component.controlStrip).to.exist;
@@ -55,7 +56,8 @@ describe('selectable-node-graph component', function() {
         });
 
         // with one node, spread should be 1
-        expect(el.getAttribute('selectable-node-graph').spread).to.deep.equal({x: 1, y: 1});
+        expect(el.getAttribute('selectable-node-graph').spreadHoriz).to.equal(1);
+        expect(el.getAttribute('selectable-node-graph').spreadVert).to.equal(1);
 
         expect(el.children.length).to.equal(1);
         const nodeEl = el.children[0];
@@ -93,7 +95,8 @@ describe('selectable-node-graph component', function() {
         expect(nodeEl.object3D.position.z).to.equal(3);
 
         // Change spread
-        el.setAttribute('selectable-node-graph', 'spread', {x: 2, y: 3});
+        el.setAttribute('selectable-node-graph', 'spreadHoriz', 2);
+        el.setAttribute('selectable-node-graph', 'spreadVert', 3);
 
         // spread update is sync for positions
         expect(nodeEl.object3D.position.x).to.equal(2); // 1 * 2
@@ -120,28 +123,28 @@ describe('selectable-node-graph component', function() {
         });
 
         // with multiple nodes, spread should ensure they fit
-        const spread = el.getAttribute('selectable-node-graph').spread;
+        const attr = el.getAttribute('selectable-node-graph');
         const expectedSpread = {x: 5/(8-(-4)+0.05), y: 0.5/(0.1-(-0.2)+0.05)}; // z width is bigger
         // TODO: why must the delta be so small?
-        expect(spread.x).to.be.closeTo(expectedSpread.x, 0.001);
-        expect(spread.y).to.be.closeTo(expectedSpread.y, 0.000001);
+        expect(attr.spreadHoriz).to.be.closeTo(expectedSpread.x, 0.001);
+        expect(attr.spreadVert).to.be.closeTo(expectedSpread.y, 0.000001);
 
         expect(el.children.length).to.equal(2);
         const nodeErsteEl = el.children[0];
         expect(nodeErsteEl.getAttribute('id')).to.equal('nodeErste');
-        expect(nodeErsteEl.object3D.position.x).to.equal(6 * spread.x);
-        expect(nodeErsteEl.object3D.position.y).to.equal(0.1 * spread.y);
-        expect(nodeErsteEl.object3D.position.z).to.equal(8 * spread.x);
+        expect(nodeErsteEl.object3D.position.x).to.equal(6 * attr.spreadHoriz);
+        expect(nodeErsteEl.object3D.position.y).to.equal(0.1 * attr.spreadVert);
+        expect(nodeErsteEl.object3D.position.z).to.equal(8 * attr.spreadHoriz);
         const nodeZwitteEl = el.children[1];
         expect(nodeZwitteEl.getAttribute('id')).to.equal('nodeZwitte');
-        expect(nodeZwitteEl.object3D.position.x).to.equal(-2 * spread.x);
-        expect(nodeZwitteEl.object3D.position.y).to.equal(-0.2 * spread.y);
-        expect(nodeZwitteEl.object3D.position.z).to.equal(-4 * spread.x);
+        expect(nodeZwitteEl.object3D.position.x).to.equal(-2 * attr.spreadHoriz);
+        expect(nodeZwitteEl.object3D.position.y).to.equal(-0.2 * attr.spreadVert);
+        expect(nodeZwitteEl.object3D.position.z).to.equal(-4 * attr.spreadHoriz);
 
         // graph should be centered on the centerpoint of the nodes
-        expect(el.object3D.position.x).to.be.closeTo((6+(-2))/2 * -spread.x, 0.002);
-        expect(el.object3D.position.y).to.equal((0.1+(-0.2))/2 * -spread.y + 1.25);
-        expect(el.object3D.position.z).to.be.closeTo((8+(-4))/2 * -spread.x, 0.002);
+        expect(el.object3D.position.x).to.be.closeTo((6+(-2))/2 * -attr.spreadHoriz, 0.002);
+        expect(el.object3D.position.y).to.equal((0.1+(-0.2))/2 * -attr.spreadVert + 1.25);
+        expect(el.object3D.position.z).to.be.closeTo((8+(-4))/2 * -attr.spreadHoriz, 0.002);
     });
 
     it('should handle URL input change', function() {

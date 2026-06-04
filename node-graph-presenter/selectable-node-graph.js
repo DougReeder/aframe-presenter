@@ -1,6 +1,7 @@
 // selectable-node-graph.js — a component and primitive with UI to load a node graph from a Noda .CSV URL or file
 // Copyright © 2026 by Doug Reeder under the MIT License
 
+const SPREADING_FACTOR = 1.1;
 const FILE_INPT_ID = 'fileInput';
 // maximum size of base64-encoded data url w/ 13 required chars + MIME type
 const BASE64_CROQUET_MAX = 16384/4*3 - 13 - 255;
@@ -18,7 +19,8 @@ AFRAME.registerComponent('selectable-node-graph', {
 		maxInitialWidth: {default: 5},
 		maxInitialHeight: {default: 2},
 		frameCenter: {type: 'vec3', default: {x: 0, y: 1.25, z: 0}},
-		spread: {type: 'vec2', default: {x: 1, y: 1}},   // spread.x also controls z
+		spreadHoriz: {type: 'number', default: 1},
+		spreadVert: {type: 'number', default: 1},
 		flavorCsv: {default: 'NODA'},
 		log: {default: false},
 	},
@@ -33,6 +35,10 @@ AFRAME.registerComponent('selectable-node-graph', {
 		this.handlers.drop = this.drop.bind(this);
 		this.handlers.spinnerStateAdded = this.spinnerStateAdded.bind(this);
 		this.handlers.spinnerStateRemoved = this.spinnerStateRemoved.bind(this);
+		this.handlers.horizontalLarger = this.incrementSpread.bind(this, SPREADING_FACTOR, 1);
+		this.handlers.horizontalSmaller = this.incrementSpread.bind(this, 1/SPREADING_FACTOR, 1);
+		this.handlers.verticalLarger = this.incrementSpread.bind(this, 1, SPREADING_FACTOR);
+		this.handlers.verticalSmaller = this.incrementSpread.bind(this, 1, 1/SPREADING_FACTOR);
 
 		const controlStrip = document.createElement('div');
 		controlStrip.style.width = 'calc(100% - 1em - 65px)';
@@ -107,6 +113,11 @@ AFRAME.registerComponent('selectable-node-graph', {
 		spinner.addEventListener('stateremoved', this.handlers.spinnerStateRemoved);
 
 		spinner?.addState(STATE_SPINNING);   // marks where node graph will be placed
+
+		this.el.addEventListener('horizontal-larger', this.handlers.horizontalLarger);
+		this.el.addEventListener('horizontal-smaller', this.handlers.horizontalSmaller);
+		this.el.addEventListener('vertical-larger', this.handlers.verticalLarger);
+		this.el.addEventListener('vertical-smaller', this.handlers.verticalSmaller);
 	},
 
 	openUrl: function (evt) {
@@ -226,16 +237,15 @@ AFRAME.registerComponent('selectable-node-graph', {
 			console.debug(`selectable-node-graph update:`, this.data, oldData);
 			this.fileInpt.value = '';
 
-			const spread = this.data.spread;
-			if (spread?.x > 0 && spread.x < Infinity &&
-					spread?.y > 0 && spread.y < Infinity &&
-					(spread?.x !== oldData.spread?.x || spread?.y !== oldData.spread?.y)) {
+			if (this.data.spreadHoriz > 0 && this.data.spreadHoriz < Infinity &&
+					this.data.spreadVert > 0 && this.data.spreadVert < Infinity &&
+					(this.data.spreadHoriz !== oldData.spreadHoriz || this.data.spreadVert !== oldData.spreadVert)) {
 				for (const child of Array.from(this.el.children)) {
 					const childNodeAttr = child.getAttribute('graph-node');
 					if (childNodeAttr) {
-						child.object3D.position.x = childNodeAttr.naturalPosition.x * spread.x;
-						child.object3D.position.z = childNodeAttr.naturalPosition.z * spread.x;
-						child.object3D.position.y = childNodeAttr.naturalPosition.y * spread.y;
+						child.object3D.position.x = childNodeAttr.naturalPosition.x * this.data.spreadHoriz;
+						child.object3D.position.z = childNodeAttr.naturalPosition.z * this.data.spreadHoriz;
+						child.object3D.position.y = childNodeAttr.naturalPosition.y * this.data.spreadVert;
 						continue;
 					}
 					const childEdgeAttr = child.getAttribute('graph-edge');
@@ -326,43 +336,36 @@ AFRAME.registerComponent('selectable-node-graph', {
 	adjustSpread: function () {
 		const data = this.data;
 		const graphObj = this.el.object3D;
-		if (data.log) {
-			console.log("adjustSpread", data, this.el, graphObj);
-		}
 		graphObj.position.x = graphObj.position.y = graphObj.position.z = 0;
 		const boundingBox = new THREE.Box3();
 		boundingBox.setFromObject(graphObj);
 		const bbSize = new THREE.Vector3();
 		boundingBox.getSize(bbSize);
 
-		let spread = {x: 1, y: 1};
+		let spreadHoriz = 1, spreadVert = 1;
 		if (this.el.children.length > 1) {
 			const horizontalSize = Math.max(bbSize.x, bbSize.z);
 			if (horizontalSize < data.minInitialWidth) {
-				spread.x = Math.min(data.minInitialWidth / horizontalSize, 1000);
+				spreadHoriz = Math.min(data.minInitialWidth / horizontalSize, 1_000_000);
 			} else if (horizontalSize > data.maxInitialWidth) {
-				spread.x = Math.max(data.maxInitialWidth / horizontalSize, 0.000001);
+				spreadHoriz = Math.max(data.maxInitialWidth / horizontalSize, 0.000001);
 			}
 			if (bbSize.y < data.minInitialHeight) {
-				spread.y = Math.min(data.minInitialHeight / bbSize.y, 1000);
+				spreadVert = Math.min(data.minInitialHeight / bbSize.y, 1_000_000);
 			} else if (bbSize.y > data.maxInitialHeight) {
-				spread.y = Math.max(data.maxInitialHeight / bbSize.y, 0.000001);
+				spreadVert = Math.max(data.maxInitialHeight / bbSize.y, 0.000001);
 			}
 		}
-		console.log(`spreadGraph spread:`, spread, bbSize, boundingBox);
+		console.log(`adjustSpread spread:`, spreadHoriz, spreadVert, bbSize, boundingBox);
 
 		const offset = new THREE.Vector3();
 		boundingBox.getCenter(offset);
-		offset.x *= -spread.x;
-		offset.z *= -spread.x;
-		offset.y *= -spread.y;
+		offset.x *= -spreadHoriz;
+		offset.z *= -spreadHoriz;
+		offset.y *= -spreadVert;
 		offset.add(data.frameCenter);
 
-		if (data.log) {
-			console.log(`spreadGraph offset: ${JSON.stringify(offset)}`);
-		}
-
-		this.el.setAttribute('selectable-node-graph', 'spread', spread);
+		this.el.setAttribute('selectable-node-graph', {spreadHoriz, spreadVert});
 		if (! offset.equals(graphObj.position)) {
 			this.el.setAttribute('position', offset);
 		}
@@ -394,6 +397,24 @@ AFRAME.registerComponent('selectable-node-graph', {
 		}
 	},
 
+	incrementSpread: function (horizontal, vertical, _evt) {
+		const spreadHoriz = this.data.spreadHoriz * horizontal;
+		const spreadVert = this.data.spreadVert * vertical;
+
+		const position = this.el.object3D.position;
+		const offset = new THREE.Vector3();
+		offset.copy(position).sub(this.data.frameCenter);
+		offset.x *= horizontal;
+		offset.z *= horizontal;
+		offset.y *= vertical;
+		offset.add(this.data.frameCenter);
+
+		this.el.setAttribute('selectable-node-graph', {spreadHoriz, spreadVert});
+		if (! offset.equals(position)) {
+			this.el.setAttribute('position', offset);
+		}
+	},
+
 	pause: function () {
 	},
 
@@ -411,6 +432,11 @@ AFRAME.registerComponent('selectable-node-graph', {
 		document.removeEventListener('paste', this.handlers.drop, { capture: true });
 		this.el.sceneEl.removeEventListener('dragover', this.handlers.preventDefault);
 		this.el.sceneEl.removeEventListener('drop', this.handlers.drop);
+
+		this.el.removeEventListener('horizontal-larger', this.handlers.horizontalLarger);
+		this.el.removeEventListener('horizontal-smaller', this.handlers.horizontalSmaller);
+		this.el.removeEventListener('vertical-larger', this.handlers.verticalLarger);
+		this.el.removeEventListener('vertical-smaller', this.handlers.verticalSmaller);
 
 		const spinner = document.getElementById(SPINNER_ID);
 		if (spinner) {
