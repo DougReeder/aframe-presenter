@@ -12,6 +12,7 @@
     <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.7.0/dist/aframe-extras.loaders.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.7.0/dist/aframe-extras.controls.min.js"></script>
     <script src="https://unpkg.com/aframe-orbit-controls@1.3.2/dist/aframe-orbit-controls.min.js"></script>
+    <script src="https://unpkg.com/aframe-simple-sun-sky@^1.2.3/simple-sun-sky.js"></script>
     <script src="https://unpkg.com/papaparse@5.5.3/papaparse.min.js"></script>
     <script src="graphUtil.js"></script>
     <script src="graph-node.js"></script>
@@ -21,14 +22,13 @@
 <script src="../src/aframe-presenter.js"></script>
 <body>
 
-<a-scene debug croquet="tps: 60; spawnPoint: 0 0 0; " >
+<a-scene debug fog="type: exponential; density:0.1; color: #444; near: 3" croquet="tps: 60; spawnPoint: 0 0 0; " >
     <a-assets timeout="10000">
         <a-asset-item id="avatarModel" src="../assets/low_poly_head_with_hair_free_download.glb"></a-asset-item>
         <a-asset-item id="pointerModel" src="../assets/pointer_cone.glb"></a-asset-item>
         <img id="floorTexture" src="../assets/floor_tiles_08_diff_2k.jpg">
         <img id="floorNormalMap" src="../assets/floor_tiles_08_nor_gl_2k.jpg">
         <img id="floorAmbientOcclusionMap" src="../assets/floor_tiles_08_ao_2k.jpg">
-        <img id="checkerboardEquirect" src="../assets/4269882900_b6dfc45dab_k.jpg">
     </a-assets>
 
     <a-entity id="presentation" selectable-node-graph multiuser></a-entity>
@@ -37,7 +37,8 @@
 
     <a-entity id="floor" geometry="primitive: plane; height: 100; width: 100;" rotation="-90 0 0"
               material="src: #floorTexture; repeat: 100 100; normalMap: #floorNormalMap; normalTextureRepeat: 100 100; ambientOcclusionMap: #floorAmbientOcclusionMap; ambientOcclusionTextureRepeat: 100 100; "></a-entity>
-    <a-sky src="#checkerboardEquirect"></a-sky>
+
+    <a-simple-sun-sky sun-position="-0.62 0.8 1" fog-color="#8c8c8c" light-color="#1288df" dark-color="#0f5083" sun-color="#c1bdb9" radius="1100"></a-simple-sun-sky>
 </a-scene>
 
 <template id="avatarTemplate">
