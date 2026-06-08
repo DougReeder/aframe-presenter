@@ -57,6 +57,7 @@ AFRAME.registerComponent('selectable-node-graph', {
 		const openFileBtn = document.createElement('button');
 		openFileBtn.style.minHeight = '40px';
 		openFileBtn.style.marginRight = '2em';
+		openFileBtn.style.zIndex = '10';
 		openFileBtn.innerText = "Select Noda .CSV file";
 		controlStrip.appendChild(openFileBtn);
 		openFileBtn.addEventListener('click', this.handlers.openGraphFile);
@@ -81,12 +82,14 @@ AFRAME.registerComponent('selectable-node-graph', {
 		urlInput.style.height = '40px';
 		urlInput.style.width = '20em';
 		urlInput.style.paddingLeft = '1em';
+		urlInput.style.zIndex = '10';
 		urlControls.appendChild(urlInput);
 		urlInput.addEventListener('change', this.handlers.openUrl);
 		this.urlInput = urlInput;
 
 		const openUrlBtn = document.createElement('button');
 		openUrlBtn.style.minHeight = '40px';
+		openUrlBtn.style.zIndex = '10';
 		openUrlBtn.innerText = "Fetch Noda CSV from URL";
 		urlControls.appendChild(openUrlBtn);
 		openUrlBtn.addEventListener('click', this.handlers.openUrl);
@@ -458,6 +461,7 @@ AFRAME.registerComponent('selectable-node-graph', {
 				this.transientDialog.style.right = '1em';
 				this.transientDialog.style.marginRight = '0';
 				this.transientDialog.style.left = '1em';
+				this.transientDialog.style.zIndex = '30';
 				document.body.appendChild(this.transientDialog);
 				const div = document.createElement('div');
 				this.transientDialog.appendChild(div);
@@ -482,6 +486,7 @@ AFRAME.registerComponent('selectable-node-graph', {
 				this.persistentDialog.style.right = '1em';
 				this.persistentDialog.style.marginRight = '0';
 				this.persistentDialog.style.left = '1em';
+				this.persistentDialog.style.zIndex = '20';
 				document.body.appendChild(this.persistentDialog);
 				const div = document.createElement('div');
 				this.persistentDialog.appendChild(div);

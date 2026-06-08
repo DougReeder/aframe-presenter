@@ -23,6 +23,7 @@ AFRAME.registerComponent('presenter', {
 	dependencies: [],
 
 	schema: {
+		flatscreenorbit: {default: false},
 		fly: {default: false},
 		presentationId: {default: 'presentation'},
 		pointerModelId: {default: 'pointerModel'},
@@ -67,6 +68,7 @@ AFRAME.registerComponent('presenter', {
 
 		if ('function' === typeof navigator.share) {
 			const shareBtn = document.createElement('button');
+			shareBtn.style.zIndex = '10';
 			shareBtn.innerText = "Share session";
 			controlStrip.appendChild(shareBtn);
 			shareBtn.addEventListener('click', this.handlers.shareSession);
@@ -74,6 +76,7 @@ AFRAME.registerComponent('presenter', {
 
 		const copyBtn = document.createElement('button');
 		copyBtn.style.marginLeft = '0.5em';
+		copyBtn.style.zIndex = '10';
 		copyBtn.innerText = "Copy session URL";
 		controlStrip.appendChild(copyBtn);
 		copyBtn.addEventListener('click', this.handlers.copySessionUrl);
@@ -83,6 +86,7 @@ AFRAME.registerComponent('presenter', {
 		helpBtn.style.position = 'absolute';
 		helpBtn.style.right = '1em';
 		helpBtn.style.top = '1em';
+		helpBtn.style.zIndex = '10';
 		helpBtn.innerText = "Help";
 		document.body.appendChild(helpBtn);
 		helpBtn.addEventListener('click', this.handlers.showHelp);
@@ -93,67 +97,15 @@ AFRAME.registerComponent('presenter', {
 		let camera = document.querySelector('[camera]');
 		camera?.parentElement.removeChild(camera);   // replaces any existing camera
 
-		if (AFRAME.utils.device.checkHeadsetConnected() && ! AFRAME.utils.device.isMobile()) {
-			camera = document.createElement('a-camera');
-			camera.setAttribute('wasd-controls-enabled', false);
-			camera.setAttribute('position', {x: 0, y: 1.6, z: 0});
-
-			el.sceneEl.addEventListener('enter-vr', this.handlers.enterXR);
-
-			const controlsConfiguration = {hand: 'left'};
-			const leftController = document.createElement('a-entity');
-			leftController.setAttribute('id', CONTROLLER_NAME_LEFT);
-			leftController.setAttribute('laser-controls', controlsConfiguration);
-			leftController.setAttribute('raycaster', {
-				objects: '.' + PRESENTATION_CLASS,
-				lineOpacity: 0.667,
-				far: 10
-			});
-			leftController.addEventListener('raycaster-intersection', this.handlers.beginCursorLeft);
-			leftController.addEventListener('raycaster-intersection-cleared', this.handlers.endCursorLeft);
-			const leftHand = document.createElement('a-entity');
-			leftHand.setAttribute('hand-tracking-controls', 'hand: left; modelColor: gray');
-			leftHand.addEventListener('pinchstarted',  this.handlers.updateCursorHandLeft);
-			leftHand.addEventListener('pinchmoved', this.handlers.updateCursorHandLeft);
-			leftHand.addEventListener('pinchended', this.handlers.endCursorLeft);
-			el.sceneEl.addEventListener('exit-vr', this.handlers.endCursorLeft);
-
-			controlsConfiguration.hand = 'right';
-			const rightController = document.createElement('a-entity');
-			rightController.setAttribute('id', CONTROLLER_NAME_RIGHT);
-			rightController.setAttribute('laser-controls', controlsConfiguration);
-			rightController.setAttribute('raycaster', {
-				objects: '.' + PRESENTATION_CLASS,
-				lineOpacity: 0.667,
-				far: 10
-			});
-			rightController.addEventListener('raycaster-intersection', this.handlers.beginCursorRight);
-			rightController.addEventListener('raycaster-intersection-cleared', this.handlers.endCursorRight);
-			const rightHand = document.createElement('a-entity');
-			rightHand.setAttribute('hand-tracking-controls', 'hand: right; modelColor: gray');
-			rightHand.addEventListener('pinchstarted',  this.handlers.updateCursorHandRight);
-			rightHand.addEventListener('pinchmoved', this.handlers.updateCursorHandRight);
-			rightHand.addEventListener('pinchended', this.handlers.endCursorRight);
-			el.sceneEl.addEventListener('exit-vr', this.handlers.endCursorRight);
-
-			this.rig = document.createElement('a-entity');
-			this.rig.setAttribute('id', 'rig');
-			this.rig.setAttribute('movement-controls', {fly: data.fly, speed: 0.1})
-			this.rig.setAttribute('position', {x: 0, y: 0, z: data.frameSize.z / 2 + data.frameCenter.z + 2});
-			this.rig.appendChild(camera);
-			this.rig.appendChild(leftController);
-			this.rig.appendChild(leftHand);
-			this.rig.appendChild(rightController);
-			this.rig.appendChild(rightHand);
-			el.sceneEl.appendChild(this.rig);
-		} else {
+		if (data.flatscreenorbit && (!AFRAME.utils.device.checkHeadsetConnected() || AFRAME.utils.device.isMobile())) {
 			camera = document.createElement('a-camera');
 			camera.setAttribute('look-controls-enabled', false);
 			camera.setAttribute('wasd-controls-enabled', false);
-			const theta = Math.random() * 2 * Math.PI;   // temporary position not same as other users
+			// sets initial position different from other users
+			const theta = Math.random() * 2 * Math.PI;
 			camera.setAttribute('orbit-controls', {
 				minDistance: 0.75,
-				maxDistance: 50,
+				maxDistance: 25,
 				target: data.frameCenter,
 				cursor: data.frameCenter,
 				initialPosition: {x: 2 * Math.sin(theta), y: 1.6, z: 2 * Math.cos(theta)},
@@ -162,6 +114,66 @@ AFRAME.registerComponent('presenter', {
 			});
 			camera.setAttribute('position', {x: 0, y: 0, z: 0});
 			el.sceneEl.appendChild(camera);
+		} else {
+			camera = document.createElement('a-camera');
+			camera.setAttribute('wasd-controls-enabled', false);
+			camera.setAttribute('position', {x: 0, y: 1.6, z: 0});
+
+			this.rig = document.createElement('a-entity');
+			this.rig.setAttribute('id', 'rig');
+			this.rig.setAttribute('movement-controls', {controls: 'gamepad,keyboard,nipple', fly: data.fly || AFRAME.utils.device.isMobile(), speed: 0.1})
+			this.rig.setAttribute('position', {x: 0, y: 0, z: data.frameSize.z / 2 + data.frameCenter.z + 2});
+			this.rig.appendChild(camera);
+
+			if (AFRAME.utils.device.checkHeadsetConnected()) {
+				el.sceneEl.addEventListener('enter-vr', this.handlers.enterXR);
+
+				const controlsConfiguration = {hand: 'left'};
+				const leftController = document.createElement('a-entity');
+				leftController.setAttribute('id', CONTROLLER_NAME_LEFT);
+				leftController.setAttribute('laser-controls', controlsConfiguration);
+				leftController.setAttribute('raycaster', {
+					objects: '.' + PRESENTATION_CLASS,
+					lineOpacity: 0.667,
+					far: 10
+				});
+				leftController.addEventListener('raycaster-intersection', this.handlers.beginCursorLeft);
+				leftController.addEventListener('raycaster-intersection-cleared', this.handlers.endCursorLeft);
+				this.rig.appendChild(leftController);
+
+				const leftHand = document.createElement('a-entity');
+				leftHand.setAttribute('hand-tracking-controls', 'hand: left; modelColor: gray');
+				leftHand.addEventListener('pinchstarted', this.handlers.updateCursorHandLeft);
+				leftHand.addEventListener('pinchmoved', this.handlers.updateCursorHandLeft);
+				leftHand.addEventListener('pinchended', this.handlers.endCursorLeft);
+				this.rig.appendChild(leftHand);
+
+				el.sceneEl.addEventListener('exit-vr', this.handlers.endCursorLeft);
+
+				controlsConfiguration.hand = 'right';
+				const rightController = document.createElement('a-entity');
+				rightController.setAttribute('id', CONTROLLER_NAME_RIGHT);
+				rightController.setAttribute('laser-controls', controlsConfiguration);
+				rightController.setAttribute('raycaster', {
+					objects: '.' + PRESENTATION_CLASS,
+					lineOpacity: 0.667,
+					far: 10
+				});
+				rightController.addEventListener('raycaster-intersection', this.handlers.beginCursorRight);
+				rightController.addEventListener('raycaster-intersection-cleared', this.handlers.endCursorRight);
+				this.rig.appendChild(rightController);
+
+				const rightHand = document.createElement('a-entity');
+				rightHand.setAttribute('hand-tracking-controls', 'hand: right; modelColor: gray');
+				rightHand.addEventListener('pinchstarted', this.handlers.updateCursorHandRight);
+				rightHand.addEventListener('pinchmoved', this.handlers.updateCursorHandRight);
+				rightHand.addEventListener('pinchended', this.handlers.endCursorRight);
+				this.rig.appendChild(rightHand);
+
+				el.sceneEl.addEventListener('exit-vr', this.handlers.endCursorRight);
+			}
+
+			el.sceneEl.appendChild(this.rig);
 		}
 		el.sceneEl.addEventListener('user-added', this.handlers.userAdded);
 		el.sceneEl.addEventListener('user-exit', this.handlers.userExit);
@@ -241,41 +253,41 @@ AFRAME.registerComponent('presenter', {
 			if (AFRAME.utils.device.isMobile()) {
 				controlHelp = `
 
-Drag to orbit.
-Two-finger drag up-down to zoom.
-Two-finger drag sideways to pan.`;
+Drag to orbit
+Two-finger drag up-down to zoom
+Two-finger drag sideways to pan`;
 			} else {
 				controlHelp = `
 
 Drag to orbit.
 Mousewheel to zoom.
-Drag with right mouse button to pan.`;
+Drag with right mouse button to pan
+[ and ] to spread/shrink horizontally
+- and = to spread/shrink vertically`;
 			}
-
+		} else {   // camera rig
 			if (AFRAME.utils.device.isMobile()) {
 				controlHelp = `
 
-Drag to orbit.
-Two-finger drag up-down to zoom.
-Two-finger drag sideways to pan.`;
+drag near left edge of screen to move
+drag near right edge of screen to rotate`;
+			} else if (AFRAME.utils.device.checkHeadsetConnected()) {
+				controlHelp = `
+
+left joystick to move
+right joystick to rotate
+A and B buttons to spread/shrink horizontally
+X and Y buttons to spread/shrink vertically
+
+In hand-tracking mode, pinch to display pointer.`;
 			} else {
 				controlHelp = `
 
-Drag to orbit.
-Mousewheel to zoom.
-Drag with right mouse button to pan.`;
+W-A-S-D or arrow keys to move
+drag to rotate
+[ and ] to spread/shrink horizontally
+- and = to spread/shrink vertically`;
 			}
-		} else {
-			controlHelp = `
-
-left joystick: move
-right joystick: rotate
-A button: enlarge horizontally
-B button: reduce horizontally
-X button: enlarge vertically
-Y button: reduce vertically
-
-In hand-tracking mode, pinch to display pointer.`;
 		}
 
 		this.showTransientMsg(`Your color is ${evt.detail.color}.` + controlHelp, evt.detail.color);
@@ -636,6 +648,7 @@ In hand-tracking mode, pinch to display pointer.`;
 				this.transientDialog.style.right = '1em';
 				this.transientDialog.style.marginRight = '0';
 				this.transientDialog.style.left = '1em';
+				this.transientDialog.style.zIndex = '30';
 				document.body.appendChild(this.transientDialog);
 				const div = document.createElement('div');
 				this.transientDialog.appendChild(div);
@@ -651,6 +664,7 @@ In hand-tracking mode, pinch to display pointer.`;
 			}
 			this.transientDialog.style.backgroundColor = colorName;
 			this.transientDialog.style.color = contrastColor;
+			this.transientDialog.style.zIndex = '20';
 			this.transientDialog.show();
 
 			setTimeout(this.transientDialog.close.bind(this.transientDialog),7000);
@@ -669,6 +683,7 @@ In hand-tracking mode, pinch to display pointer.`;
 				this.persistentDialog.style.right = '1em';
 				this.persistentDialog.style.marginRight = '0';
 				this.persistentDialog.style.left = '1em';
+				this.persistentDialog.style.zIndex = '20';
 				document.body.appendChild(this.persistentDialog);
 				const div = document.createElement('div');
 				this.persistentDialog.appendChild(div);
@@ -695,6 +710,7 @@ AFRAME.registerPrimitive('a-presenter', {
 	},
 
 	mappings: {
+		flatscreenorbit: 'presenter.flatscreenorbit',
 		fly: 'presenter.fly',
 		presentationId: 'presenter.presentationId',
 		frameSize: 'presenter.frameSize',
