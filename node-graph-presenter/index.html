@@ -29,6 +29,10 @@
         <img id="floorTexture" src="../assets/floor_tiles_08_diff_2k.jpg">
         <img id="floorNormalMap" src="../assets/floor_tiles_08_nor_gl_2k.jpg">
         <img id="floorAmbientOcclusionMap" src="../assets/floor_tiles_08_ao_2k.jpg">
+        <a-asset-item id="timberPlantPot" src="../assets/Timber_Plant_Pot.glb"></a-asset-item>
+        <a-asset-item id="pompeiiLightGreyDoubleSofa" src="../assets/PompeiiLightGreyDoubleSofa.glb"></a-asset-item>
+        <a-asset-item id="lowPolyWoodenTable" src="../assets/low_poly_wooden_table.glb"></a-asset-item>
+        <a-asset-item id="partitionPanel" src="../assets/partition_panel.glb"></a-asset-item>
     </a-assets>
 
     <a-entity id="presentation" selectable-node-graph multiuser></a-entity>
@@ -37,6 +41,11 @@
 
     <a-entity id="floor" geometry="primitive: plane; height: 100; width: 100;" rotation="-90 0 0"
               material="src: #floorTexture; repeat: 100 100; normalMap: #floorNormalMap; normalTextureRepeat: 100 100; ambientOcclusionMap: #floorAmbientOcclusionMap; ambientOcclusionTextureRepeat: 100 100; "></a-entity>
+
+    <a-gltf-model id="plantPot" src="#timberPlantPot" position="-3.75 -0.06 -3.75" rotation="0 45 0" scale="0.03 0.02 0.03"></a-gltf-model>
+    <a-gltf-model id="panel" src="#partitionPanel" position="3.5 0 -3.5" rotation="0 -45 0" scale="0.025 0.01 0.01"></a-gltf-model>
+    <a-gltf-model id="woodenTable" src="#lowPolyWoodenTable" position="3.75 0 3.75" rotation="0 -45 0" scale="25 20 25"></a-gltf-model>
+    <a-gltf-model id="greySofa" src="#pompeiiLightGreyDoubleSofa" position="-3.5 0 3.5" rotation="0 135 0" scale="1.75 1.25 1"></a-gltf-model>
 
     <a-simple-sun-sky sun-position="-0.62 0.8 1" fog-color="#8c8c8c" light-color="#1288df" dark-color="#0f5083" sun-color="#c1bdb9" radius="1100"></a-simple-sun-sky>
 </a-scene>
