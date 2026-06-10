@@ -20,7 +20,7 @@ AFRAME.registerComponent('graph-node', {
   },
 
   init: function () {
-    console.debug(`graph-node init `, this.data);
+    // console.debug(`graph-node init `, this.data);
 
     this.setNodeGeometry(this.data.primitive, this.data.size);
     this.setNodeMaterial(this.data.color, this.data.opacity, this.data.primitive === 'plane');

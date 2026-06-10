@@ -10,8 +10,9 @@ const handler = require('serve-handler');
     });
   });
 
-  server.listen(3000, async () => {
-    console.log('Running at http://localhost:3000');
+  const port = process.env.PORT || 3000;
+  server.listen(port, async () => {
+    console.log(`Running at http://localhost:${port}`);
     console.log('Public dir is:', path.resolve('.'));
 
     const isDebug = process.argv.includes('--debug');
@@ -32,7 +33,7 @@ const handler = require('serve-handler');
     });
 
     try {
-      await page.goto('http://localhost:3000/tests/index.html');
+      await page.goto(`http://localhost:${port}/tests/index.html`);
 
       if (isDebug) {
         console.log('Debug mode: browser will stay open. Close browser or press Ctrl+C to stop.');

@@ -1,20 +1,14 @@
 // jsonToNodes.js — converts SPDX JSON data to Three.js objects
 // Copyright © 2026 by Doug Reeder under the MIT License
 
+const SIM_SCALE = 0.01;
+
 async function jsonToNodes(url, graphEl) {
   console.debug('jsonToNodes: url = ' + url);
-
-  for (const child of Array.from(graphEl.children)) {
-    child.remove();
-  }
-  const graph = graphEl.object3D;
-  graph.name = 'graph';
-  disposeTree(graph);
 
   const errors = [];
   const warnings = [];
   const info = [];
-  const elMap = new Map();
 
   const response = await fetch(url);
   if (!response.ok) {
@@ -31,20 +25,48 @@ async function jsonToNodes(url, graphEl) {
   }
   console.debug('json:', json);
 
+  for (const child of Array.from(graphEl.children)) {
+    child.remove();
+  }
+  const graph = graphEl.object3D;
+  graph.name = 'graph';
+  disposeTree(graph);
+
   let numObj = 0, numNodes = 0, numEdges = 0;
-  for (const pkg of json.packages ?? []) {
-    console.debug('package:', pkg);
+  const elMap = new Map();
+  const simNodes = [];
+  for (const pkg of json?.packages ?? []) {
+    // console.debug('package:', pkg);
     ++numObj;
     let {id, title, notes, imageUrl, linkUrl, color, opacity, primitive, collapsed, position, size} = mapSpdxPackage(pkg);
 
-    if (!id) {
-      info.push(`node “${title || notes}” has no ID`);
+    // edges refer to the _most recently_ defined node with the given ID
+    if (elMap.has(id)) {
+      warnings.push(`duplicate node ID "${id}"`);
     }
+    if (id === null || id === undefined || id === '') {
+      id = '' + Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
+      info.push(`node “${title || notes}” has no ID, assigning ${id}`);
+    }
+
+    const el = document.createElement('a-entity');
+    el.setAttribute('id', id);
+    elMap.set(id, el);
+
+    simNodes.push({
+      id: id,
+      x: position.x,
+      y: position.y,
+      z: position.z,
+      vx: 0,
+      vy: 0,
+      vz: 0,
+    });
+
     position.x ||= 0;
     position.y ||= 0;
     position.z ||= 0;
 
-    const el = document.createElement('a-entity');
     el.setAttribute('graph-node', {id, title, notes, imageUrl, linkUrl, color, opacity, primitive, size, collapsed, naturalPosition: position});
     el.object3D.position.copy(position);
     // el.setAttribute('rotation', '0 45 0');
@@ -53,35 +75,34 @@ async function jsonToNodes(url, graphEl) {
     el.classList.add(PRESENTATION_CLASS);
     graphEl.appendChild(el);
 
-    if (elMap.has(id)) {
-      warnings.push(`duplicate node ID "${id}"`);
-    }
-    // edges refer to the _most recently_ defined node with the given ID
-    if (id) {
-      el.setAttribute('id', id);
-      elMap.set(id, el);
-    }
     ++numNodes;
   }
 
   // moves the main package to the center of the graph
-  const documentDescribes = (json.relationships ?? []).find(r => r.relationshipType === "DESCRIBES" && r.spdxElementId === "SPDXRef-DOCUMENT");
+  const documentDescribes = (json?.relationships ?? []).find(r => r.relationshipType === "DESCRIBES" && r.spdxElementId === "SPDXRef-DOCUMENT");
   if (documentDescribes) {
     const mainPkgObj = elMap.get(documentDescribes.relatedSpdxElement)?.object3D;
     if (mainPkgObj) {
       mainPkgObj.position.set(0, 1, 0);
       mainPkgObj.scale.set(2, 2, 2);
     } else {
-      warnings.push(`can't find package described by document: "${relationship.relatedSpdxElement}"`);
+      warnings.push(`can't find package described by document: "${documentDescribes.relatedSpdxElement}"`);
     }
   }
 
-  for (const relationship of json.relationships ?? []) {
-    console.debug('relationship:', relationship);
+  const edges = [];
+  const simLinks = [];
+  for (const relationship of json?.relationships ?? []) {
+    // console.debug('relationship:', relationship);
     ++numObj;
     let {title, fromId, toId} = mapSpdxRelationship(relationship);
 
-    if (!fromId && !toId) { continue; }
+    if (!fromId && !toId) {
+      if (title !== "DESCRIBES") {
+        warnings.push(`skipping relationship “${title}” without valid endpoints`);
+      }
+      continue;
+    }
 
     const start = elMap.get(fromId)?.object3D?.position;
     if (!start) {
@@ -102,12 +123,22 @@ async function jsonToNodes(url, graphEl) {
       toId, end
     });
     graphEl.appendChild(edgeEl);
+    edges.push(edgeEl);
+
+    simLinks.push({
+      source: fromId,
+      target: toId,
+    });
+
     ++numEdges;
   }
 
   info.push(`Parsed ${numObj} objects; added ${numNodes} nodes and ${numEdges} edges`);
 
-  console.debug("nodes:", graph.children);
+  const warning = await arrange(elMap, edges, simNodes, simLinks);
+  if (warning) { warnings.push(warning); }
+
+  console.debug("nodes & edges:", graph.children);
   return {errors, warnings, info};
 }
 
@@ -201,7 +232,7 @@ function mapSpdxPackage(pkg) {
 
   const collapsed = false;
 
-  const position = new THREE.Vector3(Math.random()*5-2.5, Math.random()*2, Math.random()*5-2.5);
+  const position = new THREE.Vector3(NaN, NaN, NaN);
 
   const size = 0.05;   // we could encode something as size
 
@@ -224,4 +255,58 @@ function mapSpdxRelationship(relationship) {
   const toId = relationship.relatedSpdxElement;
 
   return {title, fromId, toId};
+}
+
+async function arrange(elMap, edges, simNodes, simLinks) {
+  let simulation;
+  const stableArrangement = new Promise(resolve => {
+    let lastElementUpdate = Date.now();
+
+    simulation = d3.forceSimulation(simNodes, 3)
+        .force("link", d3.forceLink(simLinks).id(function(d) { return d.id; }))
+        .force("charge", d3.forceManyBody())
+        .force("center", d3.forceCenter(0, 1, 0));
+
+    simulation.on('tick', () => {
+      if (Date.now() - lastElementUpdate > 100) {
+        lastElementUpdate = Date.now();
+        updateElements();
+      }
+    });
+
+    simulation.on('end', resolve);
+  });
+
+  const timeout = new Promise(resolve => {
+    setTimeout(() => {
+      simulation?.stop();
+      resolve("node arrangement timeout");
+    }, 30_000);
+  });
+
+  const warning = Promise.race([stableArrangement, timeout]);
+  updateElements();
+  return warning;
+
+  function updateElements() {
+    for (const node of simNodes) {
+      const el = elMap.get(node.id);
+      if (el) {
+        el.setAttribute('graph-node', {naturalPosition: {x: node.x*SIM_SCALE, y: node.y*SIM_SCALE, z: node.z*SIM_SCALE}});
+
+        el.object3D?.position?.set(node.x*SIM_SCALE, node.y*SIM_SCALE, node.z*SIM_SCALE);
+      }
+    }
+    for (const edgeEl of edges) {
+      const attr = edgeEl.getAttribute('graph-edge');
+      const start = elMap.get(attr.fromId)?.object3D?.position;
+      const end = elMap.get(attr.toId)?.object3D?.position;
+      const updateObj = {};
+      if (start !== undefined) updateObj.start = start;
+      if (end !== undefined) updateObj.end = end;
+      if (Object.keys(updateObj).length > 0) {
+        edgeEl.setAttribute('graph-edge', updateObj);
+      }
+    }
+  }
 }

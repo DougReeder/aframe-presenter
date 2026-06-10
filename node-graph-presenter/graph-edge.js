@@ -19,7 +19,7 @@ AFRAME.registerComponent('graph-edge', {
   },
 
   init: function () {
-    console.debug(`graph-edge init `, this.data);
+    // console.debug(`graph-edge init `, this.data);
 
     // this.el.setAttribute('id', this.data.id);
     this.el.setAttribute('line', {start: this.data.start, end: this.data.end, color: this.data.color, opacity: this.data.opacity});
