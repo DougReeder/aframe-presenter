@@ -2,6 +2,7 @@
 // Copyright © 2026 by Doug Reeder under the MIT License
 
 const SPREADING_FACTOR = 1.1;
+const SIM_SCALE = 200;
 const FILE_INPT_ID = 'fileInput';
 // maximum size of base64-encoded data url w/ 13 required chars + MIME type
 const BASE64_CROQUET_MAX = 16384/4*3 - 13 - 255;
@@ -343,8 +344,23 @@ AFRAME.registerComponent('selectable-node-graph', {
 			let errors = [], warnings = [], info = [];
 			if (contentType?.startsWith?.('text/csv')) {
 				({errors, warnings, info} = await csvToNodes(graphUrl, this.data.flavorCsv, this.el));
+
+				setTimeout(() => {
+					try {
+						if (this.currentLoadToken !== loadToken) {
+							console.warn(`abandoned slow load of ${graphUrl}`);
+							return;
+						}
+						this.adjustSpread();
+						this.el.emit('graph-loaded');
+					} catch (err) {
+						console.error(`selectable-node-graph update spread:`, err);
+						this.showTransientMsg("spread not adjusted");
+					}
+				}, 0);
 			} else if (contentType?.startsWith?.('application/json')) {
 				({errors, warnings, info} = await jsonToNodes(graphUrl, this.el));
+				this.arrangeNodes();
 			} else {
 				throw new Error(`Unsupported content type: ${contentType || 'unknown'}`);
 			}
@@ -357,20 +373,6 @@ AFRAME.registerComponent('selectable-node-graph', {
 			if (errors?.length > 0 || warnings?.length > 0 || info?.length > 0) {
 				this.showTransientMsg([...errors, ...warnings, ...info].join('\n'));
 			}
-
-			setTimeout(() => {
-				try {
-					if (this.currentLoadToken !== loadToken) {
-						console.warn(`abandoned slow load of ${graphUrl}`);
-						return;
-					}
-					this.adjustSpread();
-					this.el.emit('graph-loaded');
-				} catch (err) {
-					console.error(`selectable-node-graph update spread:`, err);
-					this.showTransientMsg("spread not adjusted");
-				}
-			}, 0);
 		} catch (err) {
 			console.error(`selectable-node-graph update error:`, err);
 			this.showPersistentMsg(err);
@@ -378,6 +380,85 @@ AFRAME.registerComponent('selectable-node-graph', {
 			// presumes URL content has been completely read
 			URL.revokeObjectURL(graphUrl); // ok if not ObjectURL
 			spinner?.removeState(STATE_SPINNING);
+		}
+	},
+
+	arrangeNodes: function () {
+		const worker = new Worker("forceGraphWorker.js");
+		const simNodes = [], simLinks = [];
+		for (const el of this.el.children) {
+			const data = el.components['graph-node']?.data;
+			if (data) {
+				const isRoot = data.naturalPosition.y === 1;
+				simNodes.push({
+					id: data.id,
+					x: isRoot ? data.naturalPosition.x : NaN,
+					y: isRoot ? data.naturalPosition.y : NaN,
+					z: isRoot ? data.naturalPosition.z : NaN,
+					vx: NaN,
+					vy: NaN,
+					vz: NaN,
+				});
+			} else {
+				const data = el.components['graph-edge']?.data;
+				if (data) {
+					simLinks.push({
+						source: data.fromId,
+						target: data.toId,
+					});
+				}
+			}
+		}
+		worker.postMessage({
+			nodes: simNodes,
+			links: simLinks,
+		});
+
+		worker.onmessage = event => {
+			switch (event.data.type) {
+				case 'UPDATE':
+					console.debug(`arrangeNodes UPDATE:`, event.data);
+					for (const node of event.data.nodes) {
+						const el = document.getElementById(node.id);
+						if (el) {
+							el.setAttribute('graph-node', {naturalPosition: {x: node.x/SIM_SCALE, y: node.y/SIM_SCALE, z: node.z/SIM_SCALE}});
+
+							el.object3D?.position?.set(node.x/SIM_SCALE, node.y/SIM_SCALE, node.z/SIM_SCALE);
+						}
+					}
+					for (const el of this.el.children) {
+						const data = el.components['graph-edge']?.data;
+						if (data) {
+							const start = document.getElementById(data?.fromId)?.object3D?.position;
+							const end = document.getElementById(data?.toId)?.object3D?.position;
+							const updateObj = {};
+							if (Number.isFinite(start?.x) && Number.isFinite(start?.y) && Number.isFinite(start?.z)) {
+								updateObj.start = start;
+							}
+							if (Number.isFinite(end?.x) && Number.isFinite(end?.y) && Number.isFinite(end?.z)) {
+								updateObj.end = end;
+							}
+							if (Object.keys(updateObj).length > 0) {
+								el.setAttribute('graph-edge', updateObj);
+							}
+						}
+					}
+					break;
+				case 'DONE':
+					try {
+						console.info(`nodes arranged; adjusting spread & emitting graph-loaded`);
+						this.adjustSpread();
+						this.el.emit('graph-loaded');
+					} catch (err) {
+						console.error(`selectable-node-graph update spread:`, err);
+						this.showTransientMsg("spread not adjusted");
+					}
+			}
+		};
+
+		worker.onerror = errEvent => {
+			console.error(`forceGraphWorker error:`, errEvent);
+			this.showTransientMsg(`error arranging nodes`);
 		}
 	},
 

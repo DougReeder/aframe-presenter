@@ -397,9 +397,9 @@ describe('jsonToNodes', function() {
 
     const fileBusyboxEl = graphEl.children[0];
     expect(fileBusyboxEl.getAttribute('id')).to.equal('SPDXRef-File-bin-busybox-1ac501c94e2f9f81');
-    expect(Number.isNaN(fileBusyboxEl.object3D.position.x)).to.be.false;
-    expect(Number.isNaN(fileBusyboxEl.object3D.position.y)).to.be.false;
-    expect(Number.isNaN(fileBusyboxEl.object3D.position.z)).to.be.false;
+    expect(fileBusyboxEl.object3D.position.x).to.be.greaterThanOrEqual(-1);
+    expect(fileBusyboxEl.object3D.position.y).to.equal(0);
+    expect(fileBusyboxEl.object3D.position.z).to.be.greaterThanOrEqual(-1);
     expect(fileBusyboxEl.object3D.scale.x).to.equal(1.0);
     expect(fileBusyboxEl.object3D.userData?.id).to.equal('SPDXRef-File-bin-busybox-1ac501c94e2f9f81');
     expect(fileBusyboxEl.getObject3D('mesh').geometry).to.have.property('type', 'OctahedronGeometry');
@@ -416,9 +416,9 @@ describe('jsonToNodes', function() {
 
     const pkgBusyboxEl = graphEl.children[3];
     expect(pkgBusyboxEl.getAttribute('id')).to.equal('SPDXRef-Package-apk-busybox-fef07e9c95ea2bda');
-    expect(Number.isNaN(pkgBusyboxEl.object3D.position.x)).to.be.false;
-    expect(Number.isNaN(pkgBusyboxEl.object3D.position.y)).to.be.false;
-    expect(Number.isNaN(pkgBusyboxEl.object3D.position.z)).to.be.false;
+    expect(pkgBusyboxEl.object3D.position.x).to.be.greaterThanOrEqual(-1);
+    expect(pkgBusyboxEl.object3D.position.y).to.equal(0);
+    expect(pkgBusyboxEl.object3D.position.z).to.be.greaterThanOrEqual(-1);
     expect(pkgBusyboxEl.object3D.scale.x).to.equal(1.0);
     expect(pkgBusyboxEl.object3D.userData?.id).to.equal('SPDXRef-Package-apk-busybox-fef07e9c95ea2bda');
     expect(pkgBusyboxEl.getObject3D('mesh').geometry).to.have.property('type', 'IcosahedronGeometry');
@@ -435,9 +435,9 @@ describe('jsonToNodes', function() {
 
     const docRootEl = graphEl.children[5];
     expect(docRootEl.getAttribute('id')).to.equal('SPDXRef-DocumentRoot-Directory-sbom');
-    expect(Number.isNaN(docRootEl.object3D.position.x)).to.be.false;
-    expect(Number.isNaN(docRootEl.object3D.position.y)).to.be.false;
-    expect(Number.isNaN(docRootEl.object3D.position.z)).to.be.false;
+    expect(docRootEl.object3D.position.x).to.equal(0);
+    expect(docRootEl.object3D.position.y).to.equal(1.0);
+    expect(docRootEl.object3D.position.z).to.equal(0);
     expect(docRootEl.object3D.scale.x).to.equal(2.0);    // document describes this
     expect(docRootEl.object3D.userData?.id).to.equal('SPDXRef-DocumentRoot-Directory-sbom');
     expect(docRootEl.getObject3D('mesh').geometry).to.have.property('type', 'TorusKnotGeometry');
@@ -454,9 +454,9 @@ describe('jsonToNodes', function() {
 
     // contained files are added as a-entities w/ graph-edge components
     const edgeEl = graphEl.children[6];
-    expect(Number.isNaN(edgeEl.object3D.position.x)).to.be.false;
-    expect(Number.isNaN(edgeEl.object3D.position.y)).to.be.false;
-    expect(Number.isNaN(edgeEl.object3D.position.z)).to.be.false;
+    expect(edgeEl.object3D.position.x).to.be.greaterThanOrEqual(-1);
+    expect(edgeEl.object3D.position.y).to.equal(0);
+    expect(edgeEl.object3D.position.z).to.be.greaterThanOrEqual(-1);
     expect(edgeEl.object3D.scale).to.deep.equal(new THREE.Vector3(1, 1, 1));
 
     const fileEdgeAttr = edgeEl.getAttribute('graph-edge');
@@ -468,9 +468,9 @@ describe('jsonToNodes', function() {
 
     // package-dependency edges are added as a-entities w/ graph-edge components
     const packageDependencyEdgeEl = graphEl.children[8];
-    expect(Number.isNaN(packageDependencyEdgeEl.object3D.position.x)).to.be.false;
-    expect(Number.isNaN(packageDependencyEdgeEl.object3D.position.y)).to.be.false;
-    expect(Number.isNaN(packageDependencyEdgeEl.object3D.position.z)).to.be.false;
+    expect(packageDependencyEdgeEl.object3D.position.x).to.equal(0);
+    expect(packageDependencyEdgeEl.object3D.position.y).to.equal(0);
+    expect(packageDependencyEdgeEl.object3D.position.z).to.equal(0);
     expect(packageDependencyEdgeEl.object3D.scale).to.deep.equal(new THREE.Vector3(1, 1, 1));
 
     const packageDependencyEdgeAttr = packageDependencyEdgeEl.getAttribute('graph-edge');
@@ -482,9 +482,9 @@ describe('jsonToNodes', function() {
 
     // other file edges are added as a-entities w/ graph-edge components
     const otherEdgeEl = graphEl.children[10];
-    expect(Number.isNaN(otherEdgeEl.object3D.position.x)).to.be.false;
-    expect(Number.isNaN(otherEdgeEl.object3D.position.y)).to.be.false;
-    expect(Number.isNaN(otherEdgeEl.object3D.position.z)).to.be.false;
+    expect(otherEdgeEl.object3D.position.x).to.equal(0);
+    expect(otherEdgeEl.object3D.position.y).to.equal(0);
+    expect(otherEdgeEl.object3D.position.z).to.equal(0);
     expect(otherEdgeEl.object3D.scale).to.deep.equal(new THREE.Vector3(1, 1, 1));
 
     const otherEdgeAttr = otherEdgeEl.getAttribute('graph-edge');
@@ -496,9 +496,9 @@ describe('jsonToNodes', function() {
 
     // contained package edge
     const containedPackageEdgeEl = graphEl.children[12];
-    expect(Number.isNaN(containedPackageEdgeEl.object3D.position.x)).to.be.false;
-    expect(Number.isNaN(containedPackageEdgeEl.object3D.position.y)).to.be.false;
-    expect(Number.isNaN(containedPackageEdgeEl.object3D.position.z)).to.be.false;
+    expect(containedPackageEdgeEl.object3D.position.x).to.equal(0);
+    expect(containedPackageEdgeEl.object3D.position.y).to.equal(0);
+    expect(containedPackageEdgeEl.object3D.position.z).to.equal(0);
     expect(containedPackageEdgeEl.object3D.scale).to.deep.equal(new THREE.Vector3(1, 1, 1));
 
     const containedPackageEdgeAttr = containedPackageEdgeEl.getAttribute('graph-edge');

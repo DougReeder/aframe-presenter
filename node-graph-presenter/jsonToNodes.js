@@ -1,8 +1,6 @@
 // jsonToNodes.js — converts SPDX JSON data to Three.js objects
 // Copyright © 2026 by Doug Reeder under the MIT License
 
-const SIM_SCALE = 0.01;
-
 async function jsonToNodes(url, graphEl) {
   console.debug('jsonToNodes: url = ' + url);
 
@@ -34,35 +32,32 @@ async function jsonToNodes(url, graphEl) {
 
   let numObj = 0, numNodes = 0, numEdges = 0;
   const elMap = new Map();
-  const simNodes = [];
   for (const file of json?.files ?? []) {
     let {id, title, notes, imageUrl, linkUrl, color, opacity, primitive, collapsed, position, size} = mapSpdxFile(file);
 
-    createNodeElAndSimNode(id, title, notes, imageUrl, linkUrl, color, opacity, primitive, collapsed, position, size);
+    createNodeEl(id, title, notes, imageUrl, linkUrl, color, opacity, primitive, collapsed, position, size);
   }
   for (const pkg of json?.packages ?? []) {
-    // console.debug('package:', pkg);
     let {id, title, notes, imageUrl, linkUrl, color, opacity, primitive, collapsed, position, size} = mapSpdxPackage(pkg);
 
-    createNodeElAndSimNode(id, title, notes, imageUrl, linkUrl, color, opacity, primitive, collapsed, position, size);
+    createNodeEl(id, title, notes, imageUrl, linkUrl, color, opacity, primitive, collapsed, position, size);
   }
 
   // moves the main package to the center of the graph
   const documentDescribes = (json?.relationships ?? []).find(r => r.relationshipType === "DESCRIBES" && r.spdxElementId === "SPDXRef-DOCUMENT");
   if (documentDescribes) {
-    const mainPkgObj = elMap.get(documentDescribes.relatedSpdxElement)?.object3D;
-    if (mainPkgObj) {
-      mainPkgObj.position.set(0, 1, 0);
-      mainPkgObj.scale.set(2, 2, 2);
+    const mainPkgEl = elMap.get(documentDescribes.relatedSpdxElement);
+    if (mainPkgEl) {
+      mainPkgEl.setAttribute('graph-node', {naturalPosition: {x: 0, y: 1, z: 0}});
+      mainPkgEl.object3D?.position?.set(0, 1, 0);
+      mainPkgEl.object3D?.scale?.set(2, 2, 2);
     } else {
       warnings.push(`can't find package described by document: "${documentDescribes.relatedSpdxElement}"`);
     }
   }
 
   const edges = [];
-  const simLinks = [];
   for (const relationship of json?.relationships ?? []) {
-    // console.debug('relationship:', relationship);
     ++numObj;
     let {title, color, fromId, toId} = mapSpdxRelationship(relationship);
 
@@ -94,24 +89,15 @@ async function jsonToNodes(url, graphEl) {
     });
     graphEl.appendChild(edgeEl);
     edges.push(edgeEl);
-
-    simLinks.push({
-      source: fromId,
-      target: toId,
-    });
-
     ++numEdges;
   }
 
   info.push(`Parsed ${numObj} objects; added ${numNodes} nodes and ${numEdges} edges`);
 
-  const warning = await arrange(elMap, edges, simNodes, simLinks);
-  if (warning) { warnings.push(warning); }
-
   console.debug("nodes & edges:", graph.children);
   return {errors, warnings, info};
 
-  function createNodeElAndSimNode(id, title, notes, imageUrl, linkUrl, color, opacity, primitive, collapsed, position, size) {
+  function createNodeEl(id, title, notes, imageUrl, linkUrl, color, opacity, primitive, collapsed, position, size) {
     ++numObj;
 
     // edges refer to the _most recently_ defined node with the given ID
@@ -127,19 +113,9 @@ async function jsonToNodes(url, graphEl) {
     el.setAttribute('id', id);
     elMap.set(id, el);
 
-    simNodes.push({
-      id: id,
-      x: position.x,
-      y: position.y,
-      z: position.z,
-      vx: 0,
-      vy: 0,
-      vz: 0,
-    });
-
-    position.x ||= 0;
+    if (!Number.isFinite(position.x)) { position.x = Math.random() * 2 - 1; }
     position.y ||= 0;
-    position.z ||= 0;
+    if (!Number.isFinite(position.z)) { position.z = Math.random() * 2 - 1; }
 
     el.setAttribute('graph-node', {id, title, notes, imageUrl, linkUrl, color, opacity, primitive, size, collapsed, naturalPosition: position});
     el.object3D.position.copy(position);
@@ -385,58 +361,4 @@ function mapSpdxRelationship(relationship) {
   const toId = relationship.relatedSpdxElement;
 
   return {title, color, fromId, toId};
-}
-
-async function arrange(elMap, edges, simNodes, simLinks) {
-  let simulation;
-  const stableArrangement = new Promise(resolve => {
-    let lastElementUpdate = Date.now();
-
-    simulation = d3.forceSimulation(simNodes, 3)
-        .force("link", d3.forceLink(simLinks).id(function(d) { return d.id; }))
-        .force("charge", d3.forceManyBody())
-        .force("center", d3.forceCenter(0, 1, 0));
-
-    simulation.on('tick', () => {
-      if (Date.now() - lastElementUpdate > 100) {
-        lastElementUpdate = Date.now();
-        updateElements();
-      }
-    });
-
-    simulation.on('end', resolve);
-  });
-
-  const timeout = new Promise(resolve => {
-    setTimeout(() => {
-      simulation?.stop();
-      resolve("node arrangement timeout");
-    }, 30_000);
-  });
-
-  const warning = Promise.race([stableArrangement, timeout]);
-  updateElements();
-  return warning;
-
-  function updateElements() {
-    for (const node of simNodes) {
-      const el = elMap.get(node.id);
-      if (el) {
-        el.setAttribute('graph-node', {naturalPosition: {x: node.x*SIM_SCALE, y: node.y*SIM_SCALE, z: node.z*SIM_SCALE}});
-
-        el.object3D?.position?.set(node.x*SIM_SCALE, node.y*SIM_SCALE, node.z*SIM_SCALE);
-      }
-    }
-    for (const edgeEl of edges) {
-      const attr = edgeEl.getAttribute('graph-edge');
-      const start = elMap.get(attr.fromId)?.object3D?.position;
-      const end = elMap.get(attr.toId)?.object3D?.position;
-      const updateObj = {};
-      if (start !== undefined) updateObj.start = start;
-      if (end !== undefined) updateObj.end = end;
-      if (Object.keys(updateObj).length > 0) {
-        edgeEl.setAttribute('graph-edge', updateObj);
-      }
-    }
-  }
 }
