@@ -182,8 +182,8 @@ describe('jsonToNodes', function() {
     expect(edgeEl.object3D.scale).to.deep.equal(new THREE.Vector3(1, 1, 1));
 
     const edgeAttr = edgeEl.getAttribute('graph-edge');
-    expect(edgeAttr.title).to.equal('');   // DEPENDS_ON is suppressed
-    // expect(edgeAttr.color).to.equal('#FFF');
+    expect(edgeAttr.title).to.equal('');   // too common to have a title
+    expect(edgeAttr.color).to.equal('#ffffff');
     expect(edgeAttr.opacity).to.equal(1.0);
     // Check start point
     expect(edgeAttr.fromId).to.equal('SPDXRef-github-owner-bar-app-main-229496');
@@ -197,6 +197,318 @@ describe('jsonToNodes', function() {
     expect(edgeAttr.end.z).to.be.closeTo(expressEl.object3D.position.z, 0.04);
 
     expect(graphEl.children.length).to.equal(3);
+  });
+
+  it('should parse a SPDX JSON with file & package nodes and relationship edges', async function() {
+    const jsonObj = {
+      "SPDXID": "SPDXRef-DOCUMENT",
+      "files": [
+        {
+          "SPDXID": "SPDXRef-File-bin-busybox-1ac501c94e2f9f81",
+          "checksums": [
+            {
+              "algorithm": "SHA256",
+              "checksumValue": "01a989eb4d1d04b0d146c790ac536abd88f374ec74a2e110c58910b840d42045"
+            }
+          ],
+          "copyrightText": "NOASSERTION",
+          "fileName": "bin/busybox",
+          "fileTypes": [
+            "APPLICATION",
+            "BINARY"
+          ],
+          "licenseConcluded": "NOASSERTION",
+          "licenseInfoInFiles": [
+            "NOASSERTION"
+          ]
+        },
+        {
+          "SPDXID": "SPDXRef-File-etc-logrotate.d-acpid-fafc40287909057d",
+          "checksums": [
+            {
+              "algorithm": "SHA256",
+              "checksumValue": "d608a3b7715886b5735def0cc50a6359fd364fac2e0e0a459c588c04be471031"
+            }
+          ],
+          "copyrightText": "NOASSERTION",
+          "fileName": "etc/logrotate.d/acpid",
+          "fileTypes": [
+            "TEXT"
+          ],
+          "licenseConcluded": "NOASSERTION",
+          "licenseInfoInFiles": [
+            "NOASSERTION"
+          ]
+        },
+        {
+          "SPDXID": "SPDXRef-File-lib-apk-db-installed-9f5aca292136191a",
+          "checksums": [
+            {
+              "algorithm": "SHA256",
+              "checksumValue": "41d6df4ca45b333c9aac61c60d4a7cf684a3884856770fd19b3fa2202821a163"
+            }
+          ],
+          "copyrightText": "NOASSERTION",
+          "fileName": "lib/apk/db/installed",
+          "fileTypes": [
+            "TEXT"
+          ],
+          "licenseConcluded": "NOASSERTION",
+          "licenseInfoInFiles": [
+            "NOASSERTION"
+          ]
+        },
+      ],
+      "packages": [
+        {
+          "SPDXID": "SPDXRef-Package-apk-busybox-fef07e9c95ea2bda",
+          "copyrightText": "NOASSERTION",
+          "description": "Size optimized toolbox of many common UNIX utilities",
+          "downloadLocation": "https://busybox.net/",
+          "externalRefs": [
+            {
+              "referenceCategory": "SECURITY",
+              "referenceLocator": "cpe:2.3:a:busybox:busybox:1.37.0-r31:*:*:*:*:*:*:*",
+              "referenceType": "cpe23Type"
+            },
+            {
+              "referenceCategory": "PACKAGE-MANAGER",
+              "referenceLocator": "pkg:apk/alpine/busybox@1.37.0-r31?arch=x86_64&distro=alpine-3.24.0",
+              "referenceType": "purl"
+            }
+          ],
+          "filesAnalyzed": true,
+          "licenseConcluded": "NOASSERTION",
+          "licenseDeclared": "GPL-2.0-only",
+          "name": "busybox",
+          "packageVerificationCode": {
+            "packageVerificationCodeValue": "da39a3ee5e6b4b0d3255bfef95601890afd80709"
+          },
+          "sourceInfo": "acquired package info from APK DB: /lib/apk/db/installed",
+          "supplier": "NOASSERTION",
+          "versionInfo": "1.37.0-r31"
+        },
+        {
+          "SPDXID": "SPDXRef-Package-apk-musl-f7ad0ee8f1c27cb0",
+          "copyrightText": "NOASSERTION",
+          "description": "the musl c library (libc) implementation",
+          "downloadLocation": "https://musl.libc.org/",
+          "externalRefs": [
+            {
+              "referenceCategory": "SECURITY",
+              "referenceLocator": "cpe:2.3:a:musl-libc:musl:1.2.6-r2:*:*:*:*:*:*:*",
+              "referenceType": "cpe23Type"
+            },
+            {
+              "referenceCategory": "SECURITY",
+              "referenceLocator": "cpe:2.3:a:musl_libc:musl:1.2.6-r2:*:*:*:*:*:*:*",
+              "referenceType": "cpe23Type"
+            },
+            {
+              "referenceCategory": "SECURITY",
+              "referenceLocator": "cpe:2.3:a:musl:musl:1.2.6-r2:*:*:*:*:*:*:*",
+              "referenceType": "cpe23Type"
+            },
+            {
+              "referenceCategory": "PACKAGE-MANAGER",
+              "referenceLocator": "pkg:apk/alpine/musl@1.2.6-r2?arch=x86_64&distro=alpine-3.24.0",
+              "referenceType": "purl"
+            }
+          ],
+          "filesAnalyzed": true,
+          "licenseConcluded": "NOASSERTION",
+          "licenseDeclared": "MIT",
+          "name": "musl",
+          "originator": "Person: Natanael Copa (ncopa@alpinelinux.org)",
+          "packageVerificationCode": {
+            "packageVerificationCodeValue": "da39a3ee5e6b4b0d3255bfef95601890afd80709"
+          },
+          "sourceInfo": "acquired package info from APK DB: /lib/apk/db/installed",
+          "supplier": "Person: Natanael Copa (ncopa@alpinelinux.org)",
+          "versionInfo": "1.2.6-r2"
+        },
+        {
+          "SPDXID": "SPDXRef-DocumentRoot-Directory-sbom",
+          "homepage": "https://example.com/sbom.zip",
+          "copyrightText": "NOASSERTION",
+          "downloadLocation": "NOASSERTION",
+          "filesAnalyzed": false,
+          "licenseConcluded": "NOASSERTION",
+          "licenseDeclared": "NOASSERTION",
+          "name": "sbom",
+          "primaryPackagePurpose": "FILE",
+          "supplier": "NOASSERTION"
+        }
+      ],
+      "relationships": [
+        {
+          "relatedSpdxElement": "SPDXRef-File-bin-busybox-1ac501c94e2f9f81",
+          "relationshipType": "CONTAINS",
+          "spdxElementId": "SPDXRef-Package-apk-busybox-fef07e9c95ea2bda"
+        },
+        {
+          "relatedSpdxElement": "SPDXRef-File-etc-logrotate.d-acpid-fafc40287909057d",
+          "relationshipType": "CONTAINS",
+          "spdxElementId": "SPDXRef-Package-apk-busybox-fef07e9c95ea2bda"
+        },
+        {
+          "relatedSpdxElement": "SPDXRef-Package-apk-busybox-fef07e9c95ea2bda",
+          "relationshipType": "DEPENDENCY_OF",
+          "spdxElementId": "SPDXRef-Package-apk-musl-f7ad0ee8f1c27cb0"
+        },
+        {
+          "comment": "evident-by: indicates the package's existence is evident by the given file",
+          "relatedSpdxElement": "SPDXRef-File-lib-apk-db-installed-9f5aca292136191a",
+          "relationshipType": "OTHER",
+          "spdxElementId": "SPDXRef-Package-apk-musl-f7ad0ee8f1c27cb0"
+        },
+        {
+          "comment": "evident-by: indicates the package's existence is evident by the given file",
+          "relatedSpdxElement": "SPDXRef-File-lib-apk-db-installed-9f5aca292136191a",
+          "relationshipType": "OTHER",
+          "spdxElementId": "SPDXRef-Package-apk-busybox-fef07e9c95ea2bda"
+        },
+        {
+          "relatedSpdxElement": "SPDXRef-Package-apk-musl-f7ad0ee8f1c27cb0",
+          "relationshipType": "CONTAINS",
+          "spdxElementId": "SPDXRef-DocumentRoot-Directory-sbom"
+        },
+        {
+          "relatedSpdxElement": "SPDXRef-Package-apk-busybox-fef07e9c95ea2bda",
+          "relationshipType": "CONTAINS",
+          "spdxElementId": "SPDXRef-DocumentRoot-Directory-sbom"
+        },
+        {
+          "relatedSpdxElement": "SPDXRef-DocumentRoot-Directory-sbom",
+          "relationshipType": "DESCRIBES",
+          "spdxElementId": "SPDXRef-DOCUMENT"
+        }
+      ]
+    };
+
+    const blob = new Blob([JSON.stringify(jsonObj)], { type: 'application/json' });
+    blobUrl = URL.createObjectURL(blob);
+
+    const result = await jsonToNodes(blobUrl, graphEl);
+
+    expect(result.errors).to.be.empty;
+    expect(result.warnings).to.be.empty;
+    expect(result.info.length).to.equal(1);
+
+    const fileBusyboxEl = graphEl.children[0];
+    expect(fileBusyboxEl.getAttribute('id')).to.equal('SPDXRef-File-bin-busybox-1ac501c94e2f9f81');
+    expect(Number.isNaN(fileBusyboxEl.object3D.position.x)).to.be.false;
+    expect(Number.isNaN(fileBusyboxEl.object3D.position.y)).to.be.false;
+    expect(Number.isNaN(fileBusyboxEl.object3D.position.z)).to.be.false;
+    expect(fileBusyboxEl.object3D.scale.x).to.equal(1.0);
+    expect(fileBusyboxEl.object3D.userData?.id).to.equal('SPDXRef-File-bin-busybox-1ac501c94e2f9f81');
+    expect(fileBusyboxEl.getObject3D('mesh').geometry).to.have.property('type', 'OctahedronGeometry');
+
+    const fileBusyboxAttr = fileBusyboxEl.getAttribute('graph-node');
+    expect(fileBusyboxAttr.title).to.equal('bin/busybox');
+    expect(fileBusyboxAttr.notes).to.equal('APPLICATION, BINARY\nlicense: NOASSERTION');
+    expect(fileBusyboxAttr.color).to.equal('#808080');
+    expect(fileBusyboxAttr.opacity).to.equal(1.0);
+    expect(fileBusyboxAttr.primitive).to.equal('octahedron');
+    expect(fileBusyboxAttr.imageUrl).to.equal('');
+    expect(fileBusyboxAttr.linkUrl).to.equal('');
+    expect(fileBusyboxAttr.collapsed).to.be.false;
+
+    const pkgBusyboxEl = graphEl.children[3];
+    expect(pkgBusyboxEl.getAttribute('id')).to.equal('SPDXRef-Package-apk-busybox-fef07e9c95ea2bda');
+    expect(Number.isNaN(pkgBusyboxEl.object3D.position.x)).to.be.false;
+    expect(Number.isNaN(pkgBusyboxEl.object3D.position.y)).to.be.false;
+    expect(Number.isNaN(pkgBusyboxEl.object3D.position.z)).to.be.false;
+    expect(pkgBusyboxEl.object3D.scale.x).to.equal(1.0);
+    expect(pkgBusyboxEl.object3D.userData?.id).to.equal('SPDXRef-Package-apk-busybox-fef07e9c95ea2bda');
+    expect(pkgBusyboxEl.getObject3D('mesh').geometry).to.have.property('type', 'IcosahedronGeometry');
+
+    const pkgBusyboxAttr = pkgBusyboxEl.getAttribute('graph-node');
+    expect(pkgBusyboxAttr.title).to.equal('busybox');
+    expect(pkgBusyboxAttr.notes).to.equal('Size optimized toolbox of many common UNIX utilities\nv1.37.0-r31\nlicense: NOASSERTION\nlicense declared: GPL-2.0-only');
+    expect(pkgBusyboxAttr.color).to.equal('#ff0000');
+    expect(pkgBusyboxAttr.opacity).to.equal(1.0);
+    expect(pkgBusyboxAttr.primitive).to.equal('icosahedron');
+    expect(pkgBusyboxAttr.imageUrl).to.equal('');
+    expect(pkgBusyboxAttr.linkUrl).to.equal('https://busybox.net/');
+    expect(pkgBusyboxAttr.collapsed).to.be.false;
+
+    const docRootEl = graphEl.children[5];
+    expect(docRootEl.getAttribute('id')).to.equal('SPDXRef-DocumentRoot-Directory-sbom');
+    expect(Number.isNaN(docRootEl.object3D.position.x)).to.be.false;
+    expect(Number.isNaN(docRootEl.object3D.position.y)).to.be.false;
+    expect(Number.isNaN(docRootEl.object3D.position.z)).to.be.false;
+    expect(docRootEl.object3D.scale.x).to.equal(2.0);    // document describes this
+    expect(docRootEl.object3D.userData?.id).to.equal('SPDXRef-DocumentRoot-Directory-sbom');
+    expect(docRootEl.getObject3D('mesh').geometry).to.have.property('type', 'TorusKnotGeometry');
+
+    const docRootAttr = docRootEl.getAttribute('graph-node');
+    expect(docRootAttr.title).to.equal('sbom');
+    expect(docRootAttr.notes).to.equal('license: NOASSERTION');
+    expect(docRootAttr.color).to.equal('#808080');
+    expect(docRootAttr.opacity).to.equal(1.0);
+    expect(docRootAttr.primitive).to.equal('torusKnot');
+    expect(docRootAttr.imageUrl).to.equal('');
+    expect(docRootAttr.linkUrl).to.equal('https://example.com/sbom.zip');
+    expect(docRootAttr.collapsed).to.be.false;
+
+    // contained files are added as a-entities w/ graph-edge components
+    const edgeEl = graphEl.children[6];
+    expect(Number.isNaN(edgeEl.object3D.position.x)).to.be.false;
+    expect(Number.isNaN(edgeEl.object3D.position.y)).to.be.false;
+    expect(Number.isNaN(edgeEl.object3D.position.z)).to.be.false;
+    expect(edgeEl.object3D.scale).to.deep.equal(new THREE.Vector3(1, 1, 1));
+
+    const fileEdgeAttr = edgeEl.getAttribute('graph-edge');
+    expect(fileEdgeAttr.title).to.equal('');
+    expect(fileEdgeAttr.color).to.equal('#00ff00');
+    expect(fileEdgeAttr.opacity).to.equal(1.0);
+    expect(fileEdgeAttr.fromId).to.equal('SPDXRef-Package-apk-busybox-fef07e9c95ea2bda');
+    expect(fileEdgeAttr.toId).to.equal('SPDXRef-File-bin-busybox-1ac501c94e2f9f81');
+
+    // package-dependency edges are added as a-entities w/ graph-edge components
+    const packageDependencyEdgeEl = graphEl.children[8];
+    expect(Number.isNaN(packageDependencyEdgeEl.object3D.position.x)).to.be.false;
+    expect(Number.isNaN(packageDependencyEdgeEl.object3D.position.y)).to.be.false;
+    expect(Number.isNaN(packageDependencyEdgeEl.object3D.position.z)).to.be.false;
+    expect(packageDependencyEdgeEl.object3D.scale).to.deep.equal(new THREE.Vector3(1, 1, 1));
+
+    const packageDependencyEdgeAttr = packageDependencyEdgeEl.getAttribute('graph-edge');
+    expect(packageDependencyEdgeAttr.title).to.equal('');
+    expect(packageDependencyEdgeAttr.color).to.equal('#ffffff');
+    expect(packageDependencyEdgeAttr.opacity).to.equal(1.0);
+    expect(packageDependencyEdgeAttr.fromId).to.equal('SPDXRef-Package-apk-musl-f7ad0ee8f1c27cb0');
+    expect(packageDependencyEdgeAttr.toId).to.equal('SPDXRef-Package-apk-busybox-fef07e9c95ea2bda');
+
+    // other file edges are added as a-entities w/ graph-edge components
+    const otherEdgeEl = graphEl.children[10];
+    expect(Number.isNaN(otherEdgeEl.object3D.position.x)).to.be.false;
+    expect(Number.isNaN(otherEdgeEl.object3D.position.y)).to.be.false;
+    expect(Number.isNaN(otherEdgeEl.object3D.position.z)).to.be.false;
+    expect(otherEdgeEl.object3D.scale).to.deep.equal(new THREE.Vector3(1, 1, 1));
+
+    const otherEdgeAttr = otherEdgeEl.getAttribute('graph-edge');
+    expect(otherEdgeAttr.title).to.equal('');
+    expect(otherEdgeAttr.color).to.equal('#000000');
+    expect(otherEdgeAttr.opacity).to.equal(1.0);
+    expect(otherEdgeAttr.fromId).to.equal('SPDXRef-Package-apk-busybox-fef07e9c95ea2bda');
+    expect(otherEdgeAttr.toId).to.equal('SPDXRef-File-lib-apk-db-installed-9f5aca292136191a');
+
+    // contained package edge
+    const containedPackageEdgeEl = graphEl.children[12];
+    expect(Number.isNaN(containedPackageEdgeEl.object3D.position.x)).to.be.false;
+    expect(Number.isNaN(containedPackageEdgeEl.object3D.position.y)).to.be.false;
+    expect(Number.isNaN(containedPackageEdgeEl.object3D.position.z)).to.be.false;
+    expect(containedPackageEdgeEl.object3D.scale).to.deep.equal(new THREE.Vector3(1, 1, 1));
+
+    const containedPackageEdgeAttr = containedPackageEdgeEl.getAttribute('graph-edge');
+    expect(containedPackageEdgeAttr.title).to.equal('');
+    expect(containedPackageEdgeAttr.color).to.equal('#00ff00');
+    expect(containedPackageEdgeAttr.opacity).to.equal(1.0);
+    expect(containedPackageEdgeAttr.fromId).to.equal('SPDXRef-DocumentRoot-Directory-sbom');
+    expect(containedPackageEdgeAttr.toId).to.equal('SPDXRef-Package-apk-busybox-fef07e9c95ea2bda');
+
+    expect(graphEl.children.length).to.equal(13); // no edge for SPDXRef-DOCUMENT DESCRIBES
   });
 
 });

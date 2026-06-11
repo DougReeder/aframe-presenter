@@ -35,10 +35,84 @@ async function jsonToNodes(url, graphEl) {
   let numObj = 0, numNodes = 0, numEdges = 0;
   const elMap = new Map();
   const simNodes = [];
+  for (const file of json?.files ?? []) {
+    let {id, title, notes, imageUrl, linkUrl, color, opacity, primitive, collapsed, position, size} = mapSpdxFile(file);
+
+    createNodeElAndSimNode(id, title, notes, imageUrl, linkUrl, color, opacity, primitive, collapsed, position, size);
+  }
   for (const pkg of json?.packages ?? []) {
     // console.debug('package:', pkg);
-    ++numObj;
     let {id, title, notes, imageUrl, linkUrl, color, opacity, primitive, collapsed, position, size} = mapSpdxPackage(pkg);
+
+    createNodeElAndSimNode(id, title, notes, imageUrl, linkUrl, color, opacity, primitive, collapsed, position, size);
+  }
+
+  // moves the main package to the center of the graph
+  const documentDescribes = (json?.relationships ?? []).find(r => r.relationshipType === "DESCRIBES" && r.spdxElementId === "SPDXRef-DOCUMENT");
+  if (documentDescribes) {
+    const mainPkgObj = elMap.get(documentDescribes.relatedSpdxElement)?.object3D;
+    if (mainPkgObj) {
+      mainPkgObj.position.set(0, 1, 0);
+      mainPkgObj.scale.set(2, 2, 2);
+    } else {
+      warnings.push(`can't find package described by document: "${documentDescribes.relatedSpdxElement}"`);
+    }
+  }
+
+  const edges = [];
+  const simLinks = [];
+  for (const relationship of json?.relationships ?? []) {
+    // console.debug('relationship:', relationship);
+    ++numObj;
+    let {title, color, fromId, toId} = mapSpdxRelationship(relationship);
+
+    if (!fromId && !toId) {
+      if (title !== "SPDXRef-DOCUMENT DESCRIBES") { // TODO: better way to signal this?
+        warnings.push(`skipping relationship “${title}” without valid endpoints`);
+      }
+      continue;
+    }
+
+    const start = elMap.get(fromId)?.object3D?.position;
+    if (!start) {
+      console.warn(`can't find “from” node for edge “${title}”`);
+      warnings.push(`can't find “from” node for edge “${title}”`);
+      continue;
+    }
+    const end = elMap.get(toId)?.object3D?.position;
+    if (!end) {
+      console.warn(`can't find “to” node for edge “${title}”`);
+      warnings.push(`can't find “to” node for edge “${title}”`);
+      continue;
+    }
+    const edgeEl = document.createElement('a-entity');
+    edgeEl.setAttribute('graph-edge', {
+      title,
+      color,
+      fromId, start,
+      toId, end
+    });
+    graphEl.appendChild(edgeEl);
+    edges.push(edgeEl);
+
+    simLinks.push({
+      source: fromId,
+      target: toId,
+    });
+
+    ++numEdges;
+  }
+
+  info.push(`Parsed ${numObj} objects; added ${numNodes} nodes and ${numEdges} edges`);
+
+  const warning = await arrange(elMap, edges, simNodes, simLinks);
+  if (warning) { warnings.push(warning); }
+
+  console.debug("nodes & edges:", graph.children);
+  return {errors, warnings, info};
+
+  function createNodeElAndSimNode(id, title, notes, imageUrl, linkUrl, color, opacity, primitive, collapsed, position, size) {
+    ++numObj;
 
     // edges refer to the _most recently_ defined node with the given ID
     if (elMap.has(id)) {
@@ -77,72 +151,10 @@ async function jsonToNodes(url, graphEl) {
 
     ++numNodes;
   }
-
-  // moves the main package to the center of the graph
-  const documentDescribes = (json?.relationships ?? []).find(r => r.relationshipType === "DESCRIBES" && r.spdxElementId === "SPDXRef-DOCUMENT");
-  if (documentDescribes) {
-    const mainPkgObj = elMap.get(documentDescribes.relatedSpdxElement)?.object3D;
-    if (mainPkgObj) {
-      mainPkgObj.position.set(0, 1, 0);
-      mainPkgObj.scale.set(2, 2, 2);
-    } else {
-      warnings.push(`can't find package described by document: "${documentDescribes.relatedSpdxElement}"`);
-    }
-  }
-
-  const edges = [];
-  const simLinks = [];
-  for (const relationship of json?.relationships ?? []) {
-    // console.debug('relationship:', relationship);
-    ++numObj;
-    let {title, fromId, toId} = mapSpdxRelationship(relationship);
-
-    if (!fromId && !toId) {
-      if (title !== "DESCRIBES") {
-        warnings.push(`skipping relationship “${title}” without valid endpoints`);
-      }
-      continue;
-    }
-
-    const start = elMap.get(fromId)?.object3D?.position;
-    if (!start) {
-      console.warn(`can't find “from” node for edge “${title}”`);
-      warnings.push(`can't find “from” node for edge “${title}”`);
-      continue;
-    }
-    const end = elMap.get(toId)?.object3D?.position;
-    if (!end) {
-      console.warn(`can't find “to” node for edge “${title}”`);
-      warnings.push(`can't find “to” node for edge “${title}”`);
-      continue;
-    }
-    const edgeEl = document.createElement('a-entity');
-    edgeEl.setAttribute('graph-edge', {
-      title,
-      fromId, start,
-      toId, end
-    });
-    graphEl.appendChild(edgeEl);
-    edges.push(edgeEl);
-
-    simLinks.push({
-      source: fromId,
-      target: toId,
-    });
-
-    ++numEdges;
-  }
-
-  info.push(`Parsed ${numObj} objects; added ${numNodes} nodes and ${numEdges} edges`);
-
-  const warning = await arrange(elMap, edges, simNodes, simLinks);
-  if (warning) { warnings.push(warning); }
-
-  console.debug("nodes & edges:", graph.children);
-  return {errors, warnings, info};
 }
 
-const URL_REGEXP = /\b(?:git\+)?(https?:\/\/[^\s'"]+)/;
+const URL_REGEXP = /\b(https?:\/\/[^\s'"]+)/;
+const VCS_URL_REGEXP = /\b(?:(?:git|svn)\+)?((https?|ssh|git|svn):\/\/[^\s'"]+)/;
 const LICENSE_TO_COLOR = {
   // public domain
   'CC0': '#000000',
@@ -178,6 +190,7 @@ const LICENSE_TO_COLOR = {
   // copyleft
   'GPL': '#ff0000',
   'GPL-2.0': '#ff0000',
+  'GPL-2.0-only': '#ff0000',
   'GPL-3.0': '#ff0000',
   'CC-BY-SA': '#c00000',
   'EPL-2.0': '#ff8000',
@@ -187,48 +200,60 @@ const PKGMGR_TO_PRIMITIVE = {
   'pkg:github': 'tetrahedron',
   'pkg:githubactions': 'sphere',
   'pkg:npm': 'box',
-  'pkg:maven': 'octahedron',
-  'pkg:gem': 'dodecahedron',   // Ruby
-  'pkg:pypi': 'icosahedron',
-  'pkg:golang': 'cone',
-  'pkg:composer': 'torus',   // PHP
-  'pkg:docker': 'cylinder',
-  'pkg:nuget': 'triangle',   //.NET
-  'pkg:cargo': 'ring',   // Rust
+  'pkg:maven': 'dodecahedron',
+  'pkg:apk': 'icosahedron',
+  'pkg:gem': 'cone',   // Ruby
+  'pkg:pypi': 'cylinder',
+  'pkg:docker': 'torus',
+  'pkg:golang': 'triangle',
+  'pkg:composer': 'ring',   // PHP
 };
 
-function mapSpdxPackage(pkg) {
-  const id = pkg.SPDXID;
+function mapSpdxFile(file) {
+  const id = file.SPDXID;
 
-  const title = pkg.name;
+  const title = file.fileName;
 
   const noteArr = [];
-  if (pkg.versionInfo) {
-    noteArr.push("v" + pkg.versionInfo);
+  if (file.fileTypes?.length > 0) {
+    noteArr.push(file.fileTypes.join(', '));
   }
-  if (pkg.licenseConcluded) {
-    noteArr.push("license: " + pkg.licenseConcluded);
+  if (file.description) {
+    noteArr.push(file.description);
   }
-  if (pkg.licenseDeclared && pkg.licenseConcluded !== pkg.licenseDeclared) {
-    noteArr.push("license declared: " + pkg.licenseDeclared);
+  if (file.fileComment) {
+    noteArr.push(file.fileComment);
+  }
+  if (file.licenseConcluded) {
+    noteArr.push("license: " + file.licenseConcluded);
+  }
+  for (const licenseInfo of file.licenseInfoInFiles) {
+    if (licenseInfo && licenseInfo !== file.licenseConcluded) {
+      noteArr.push("license info: " + licenseInfo);
+    }
+  }
+  if (file.copyrightText && file.copyrightText !== file.licenseConcluded) {
+    noteArr.push("copyright text: " + file.copyrightText);
+  }
+  if (file.licenseComments) {
+    noteArr.push(file.licenseComments);
   }
   const notes = noteArr.join('\n');
 
   const imageUrl = null;
 
-  const match = URL_REGEXP.exec(pkg.downloadLocation)
-  const linkUrl = match ? match[1] : null;
+  const linkUrl = null;
 
-  let color = LICENSE_TO_COLOR[pkg.licenseConcluded];
-  if (!color) {
-    color = LICENSE_TO_COLOR[pkg.licenseDeclared] || '#808080';
+  let color = LICENSE_TO_COLOR[file.licenseConcluded];
+  for (const licenseInfo of file.licenseInfoInFiles) {
+    if (!color && licenseInfo) {
+      color = LICENSE_TO_COLOR[file.copyrightText];
+    }
   }
+  color ||= '#808080';
   const opacity = 1.0;
 
-  const pkmgrStr = pkg?.externalRefs?.[0]?.referenceLocator ?? '';
-  const slashInd = pkmgrStr.indexOf('/');
-  const pkgmgr = pkmgrStr.slice(0, slashInd);
-  const primitive = PKGMGR_TO_PRIMITIVE[pkgmgr] || 'torusKnot';
+  const primitive = 'octahedron';
 
   const collapsed = false;
 
@@ -239,22 +264,127 @@ function mapSpdxPackage(pkg) {
   return {id, title, notes, imageUrl, linkUrl, color, opacity, primitive, collapsed, position, size};
 }
 
-function mapSpdxRelationship(relationship) {
-  let title = relationship.relationshipType;
-  if (title === 'DEPENDS_ON') { title = '' }   // presumed value
+function mapSpdxPackage(pkg) {
+  const id = pkg.SPDXID;
 
-  if (relationship.relationshipType === "DESCRIBES") {
-    if (relationship.spdxElementId !== "SPDXRef-DOCUMENT") {
-      console.info(`unknown DESCRIBES relationship: ${relationship.spdxElementId}`);
-    }
-    return {title};
+  const title = pkg.name;
+
+  const noteArr = [];
+  if (pkg.summary) {
+    noteArr.push(pkg.summary);
   }
+  if (pkg.description) {
+    noteArr.push(pkg.description);
+  }
+  if (pkg.versionInfo) {
+    noteArr.push("v" + pkg.versionInfo);
+  }
+  if (pkg.licenseConcluded) {
+    noteArr.push("license: " + pkg.licenseConcluded);
+  }
+  if (pkg.licenseDeclared && pkg.licenseConcluded !== pkg.licenseDeclared) {
+    noteArr.push("license declared: " + pkg.licenseDeclared);
+  }
+  // if (pkg.sourceInfo) {
+  //   noteArr.push("source info: " + pkg.sourceInfo);
+  // }
+  const notes = noteArr.join('\n');
+
+  const imageUrl = null;
+
+  let linkUrl, match;
+  match = URL_REGEXP.exec(pkg.homepage);
+  if (match) {
+    linkUrl = match[1];
+  }
+  if (!linkUrl && pkg.downloadLocation) {
+    match = VCS_URL_REGEXP.exec(pkg.downloadLocation);
+    if (match) {
+      linkUrl = match[1];
+    }
+  }
+
+  let color = LICENSE_TO_COLOR[pkg.licenseConcluded];
+  if (!color) {
+    color = LICENSE_TO_COLOR[pkg.licenseDeclared] || '#808080';
+  }
+  const opacity = 1.0;
+
+  let primitive;
+  for (const ref of pkg.externalRefs ?? []) {
+    if (['PACKAGE-MANAGER', 'PACKAGE_MANAGER'].includes(ref?.referenceCategory)) {
+      const refLocator = ref?.referenceLocator ?? '';
+      const slashInd = refLocator.indexOf('/');
+      const pkgmgr = refLocator.slice(0, slashInd);
+      primitive = PKGMGR_TO_PRIMITIVE[pkgmgr];
+      if (primitive) { break; }
+    }
+  }
+  primitive ??= 'torusKnot';
+
+  const collapsed = false;
+
+  const position = new THREE.Vector3(NaN, NaN, NaN);
+
+  const size = 0.05;   // we could encode something as size
+
+  return {id, title, notes, imageUrl, linkUrl, color, opacity, primitive, collapsed, position, size};
+}
+
+const RELATIONSHIP_TO_COLOR = {
+  'DESCRIBES': '#000000',
+  // package relationships
+  'DEPENDS_ON': '#ffffff',
+  'DEPENDENCY_OF': '#ffffff', // buildkit-syft-scanner but not in v3.0.1 standard?
+  // file relationships
+  'CONTAINS': '#00ff00',
+  'OTHER': '#000000',
+  // vulnerabilities
+  'AFFECTS': '#ff0000',
+  'DOES_NOT_AFFECT': '#0000ff',
+  'EXPLOIT_CREATED_BY': '#ffff00',
+  'FIXED_BY': '#ff00ff',
+  'FIXED_IN': '#ff00ff',
+  'FOUND_BY': '#808080',
+  'HAS_ASSESSMENT_FOR': '#808080',
+  'HAS_ASSOCIATED_VULNERABILITY': '#ffff00',
+
+  // other relationships
+  'AMENDED_BY': '#000080',
+  'ANCESTOR_OF': '#000080',
+  'AVAILABLE_FROM': '#000080',
+  'CONFIGURES': '#000080',
+  'COORDINATED_BY': '#000080',
+  'COPIED_TO': '#000080',
+  'DELEGATED_TO': '#000080',
+  'DESCENDANT_OF': '#000080',
+  'EXPANDS_TO': '#000080',
+  'GENERATES': '#000080',
+  'HAS_ADDED_FILE': '#000080',
+  'HAS_CONCLUEDED_LICENSE': '#000080',
+  'HAS_DATA_FILE': '#000080',
+  'HAS_DECLARED_LICENSE': '#000080',
+  'HAS_DELETED_FILE': '#000080',
+  //...
+}
+
+function mapSpdxRelationship(relationship) {
+  let title;
+  if ([].includes(relationship.relationshipType)) {   // TODO: where is a titled node useful?
+    title = relationship.relationshipType;
+  }
+
+  if (relationship.spdxElementId === "SPDXRef-DOCUMENT" && relationship.relationshipType === "DESCRIBES") {
+    return {title: 'SPDXRef-DOCUMENT DESCRIBES'};
+  }
+
+  const color = RELATIONSHIP_TO_COLOR[relationship.relationshipType] || '#808080';
 
   const fromId = relationship.spdxElementId;
 
   const toId = relationship.relatedSpdxElement;
 
-  return {title, fromId, toId};
+  return {title, color, fromId, toId};
 }
 
 async function arrange(elMap, edges, simNodes, simLinks) {

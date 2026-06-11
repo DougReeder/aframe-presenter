@@ -23,12 +23,14 @@ AFRAME.registerComponent('graph-node', {
     // console.debug(`graph-node init `, this.data);
 
     this.setNodeGeometry(this.data.primitive, this.data.size);
-    this.setNodeMaterial(this.data.color, this.data.opacity, this.data.primitive === 'plane');
+    const isFlat = ['plane', 'circle', 'ring', 'triangle'].includes(this.data.primitive);
+    this.setNodeMaterial(this.data.color, this.data.opacity, isFlat);
   },
 
   handlers: {},
 
   update: function (oldData) {
+    const isFlat = ['plane', 'circle', 'ring', 'triangle'].includes(this.data.primitive);
     if (this.data.primitive !== oldData.primitive) {
       if (this.el.components.geometry) {
         this.el.getObject3D('mesh')?.geometry?.dispose?.();
@@ -46,10 +48,10 @@ AFRAME.registerComponent('graph-node', {
           }
         }
       }
-      this.setNodeMaterial(this.data.color, this.data.opacity, this.data.primitive === 'plane');
+      this.setNodeMaterial(this.data.color, this.data.opacity, isFlat);
     }
     if ((this.data.title || oldData.title) && this.data.title !== oldData.title) {
-      this.setNodeTitle(this.data.title, this.data.size, this.data.primitive === 'plane');
+      this.setNodeTitle(this.data.title, this.data.size, isFlat);
     }
     if ((this.data.notes || oldData.notes) && this.data.notes !== oldData.notes ) {
       this.setNotesChild(this.data.notes, this.data.size);
@@ -75,11 +77,32 @@ AFRAME.registerComponent('graph-node', {
         const cylinderHeight = size * (Math.sin(Math.PI / 4) + 1) / 2;
         this.el.setAttribute('geometry', {primitive: 'cylinder', radius: cylinderHeight / 2, height: cylinderHeight});
         return;
-      case 'octahedron':   // octahedron
+      case 'octahedron':
         this.el.setAttribute('geometry', {primitive: 'octahedron', radius: size * 1.1 / 2});   // fudge factor
+        return;
+      case 'dodecahedron':
+        this.el.setAttribute('geometry', {primitive: 'dodecahedron', radius: size / 2});
+        return;
+      case 'icosahedron':
+        this.el.setAttribute('geometry', {primitive: 'icosahedron', radius: size / 2});
         return;
       case 'cone':
         this.el.setAttribute('geometry', {primitive: 'cone', height: size,  radiusTop: 0, radiusBottom: size / 2});
+        return;
+      case 'torus':
+        this.el.setAttribute('geometry', {primitive: 'torus', radius: size / 2, radiusTubular: size / 8});
+        return;
+      case 'circle':
+        this.el.setAttribute('geometry', {primitive: 'circle', radius: size / 2});
+        return;
+      case 'ring':
+        this.el.setAttribute('geometry', {primitive: 'ring', radiusOuter: size / 2, radiusInner: size / 4});
+        return;
+      case 'triangle':
+        const measureUp = size * 0.666667;
+        const measureDown = size * 0.333333
+        const measureSide = size / 2;
+        this.el.setAttribute('geometry', {primitive: 'triangle', vertexA: `0 ${measureUp} 0`, vertexB: `${-measureSide} ${-measureDown} 0`, vertexC: `${measureSide} ${-measureDown} 0`});
         return;
       // case 'Hourglass': // hourglass
       //   const hourglassCoordinate = (Math.sin(Math.PI / 4) + 1) / 2;
