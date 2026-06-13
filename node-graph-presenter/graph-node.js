@@ -11,9 +11,9 @@ AFRAME.registerComponent('graph-node', {
     color: {type: 'color'},
     opacity: {default: 1.0},
     primitive: {default: 'box'},
-    size: {default: 0.05},
+    size: {default: 0.05},           // in meters
     collapsed: {default: false},
-    naturalPosition: {type: 'vec3'},
+    naturalPosition: {type: 'vec3'}, // before spreading
   },
 
   event: {

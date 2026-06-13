@@ -32,6 +32,7 @@ async function jsonToNodes(url, graphEl) {
 
   let numObj = 0, numNodes = 0, numEdges = 0;
   const elMap = new Map();
+  let rootId = null;
   for (const file of json?.files ?? []) {
     let {id, title, notes, imageUrl, linkUrl, color, opacity, primitive, collapsed, position, size} = mapSpdxFile(file);
 
@@ -59,12 +60,10 @@ async function jsonToNodes(url, graphEl) {
   const edges = [];
   for (const relationship of json?.relationships ?? []) {
     ++numObj;
-    let {title, color, fromId, toId} = mapSpdxRelationship(relationship);
+    let {action, title, color, fromId, toId, preferredLength} = mapSpdxRelationship(relationship);
 
-    if (!fromId && !toId) {
-      if (title !== "SPDXRef-DOCUMENT DESCRIBES") { // TODO: better way to signal this?
-        warnings.push(`skipping relationship “${title}” without valid endpoints`);
-      }
+    if ('ROOT_ID' === action) {
+      rootId = title;
       continue;
     }
 
@@ -85,11 +84,19 @@ async function jsonToNodes(url, graphEl) {
       title,
       color,
       fromId, start,
-      toId, end
+      toId, end,
+      preferredLength,
     });
     graphEl.appendChild(edgeEl);
     edges.push(edgeEl);
     ++numEdges;
+  }
+
+  // TODO: should we just calculate based on the number of child nodes?
+  for (const edge of edges) {
+    if (edge.components['graph-edge']?.data?.fromId === rootId) {
+      edge.setAttribute('graph-edge', {preferredLength: 0.60});
+    }
   }
 
   info.push(`Parsed ${numObj} objects; added ${numNodes} nodes and ${numEdges} edges`);
@@ -126,6 +133,31 @@ async function jsonToNodes(url, graphEl) {
     graphEl.appendChild(el);
 
     ++numNodes;
+  }
+
+  function mapSpdxRelationship(relationship) {
+    let title;
+    if ([].includes(relationship.relationshipType)) {   // TODO: where is a titled edge useful?
+      title = relationship.relationshipType;
+    }
+
+    if (relationship.spdxElementId === "SPDXRef-DOCUMENT" && relationship.relationshipType === "DESCRIBES") {
+      return {action: 'ROOT_ID', title: relationship.relatedSpdxElement};
+    }
+
+    const color = RELATIONSHIP_TO_COLOR[relationship.relationshipType] || '#808080';
+
+    const fromId = relationship.spdxElementId;
+
+    const toId = relationship.relatedSpdxElement;
+    const toData = elMap.get(toId)?.components['graph-node']?.data;
+
+    // files should be closer to their packages
+    // TODO: It's fragile to depend on the primitive type, but it's confined to this source file.
+    const isContainsFile = relationship.relationshipType === 'CONTAINS' && toData?.primitive === 'octahedron';
+    const preferredLength = isContainsFile ? 0.08 : 0.30;
+
+    return {action: 'EDGE', title, color, fromId, toId, preferredLength};
   }
 }
 
@@ -342,23 +374,4 @@ const RELATIONSHIP_TO_COLOR = {
   'HAS_DECLARED_LICENSE': '#000080',
   'HAS_DELETED_FILE': '#000080',
   //...
-}
-
-function mapSpdxRelationship(relationship) {
-  let title;
-  if ([].includes(relationship.relationshipType)) {   // TODO: where is a titled node useful?
-    title = relationship.relationshipType;
-  }
-
-  if (relationship.spdxElementId === "SPDXRef-DOCUMENT" && relationship.relationshipType === "DESCRIBES") {
-    return {title: 'SPDXRef-DOCUMENT DESCRIBES'};
-  }
-
-  const color = RELATIONSHIP_TO_COLOR[relationship.relationshipType] || '#808080';
-
-  const fromId = relationship.spdxElementId;
-
-  const toId = relationship.relatedSpdxElement;
-
-  return {title, color, fromId, toId};
 }

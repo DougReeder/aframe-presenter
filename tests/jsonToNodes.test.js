@@ -195,6 +195,7 @@ describe('jsonToNodes', function() {
     expect(edgeAttr.end.x).to.be.closeTo(expressEl.object3D.position.x, 0.06);
     // expect(edgeAttr.end.y).to.be.closeTo(expressEl.object3D.position.y, 0.001);
     expect(edgeAttr.end.z).to.be.closeTo(expressEl.object3D.position.z, 0.04);
+    expect(edgeAttr.preferredLength).to.equal(0.30);
 
     expect(graphEl.children.length).to.equal(3);
   });
@@ -465,6 +466,7 @@ describe('jsonToNodes', function() {
     expect(fileEdgeAttr.opacity).to.equal(1.0);
     expect(fileEdgeAttr.fromId).to.equal('SPDXRef-Package-apk-busybox-fef07e9c95ea2bda');
     expect(fileEdgeAttr.toId).to.equal('SPDXRef-File-bin-busybox-1ac501c94e2f9f81');
+    expect(fileEdgeAttr.preferredLength).to.equal(0.08);
 
     // package-dependency edges are added as a-entities w/ graph-edge components
     const packageDependencyEdgeEl = graphEl.children[8];
@@ -479,6 +481,7 @@ describe('jsonToNodes', function() {
     expect(packageDependencyEdgeAttr.opacity).to.equal(1.0);
     expect(packageDependencyEdgeAttr.fromId).to.equal('SPDXRef-Package-apk-musl-f7ad0ee8f1c27cb0');
     expect(packageDependencyEdgeAttr.toId).to.equal('SPDXRef-Package-apk-busybox-fef07e9c95ea2bda');
+    expect(packageDependencyEdgeAttr.preferredLength).to.equal(0.30);
 
     // other file edges are added as a-entities w/ graph-edge components
     const otherEdgeEl = graphEl.children[10];
@@ -493,6 +496,7 @@ describe('jsonToNodes', function() {
     expect(otherEdgeAttr.opacity).to.equal(1.0);
     expect(otherEdgeAttr.fromId).to.equal('SPDXRef-Package-apk-busybox-fef07e9c95ea2bda');
     expect(otherEdgeAttr.toId).to.equal('SPDXRef-File-lib-apk-db-installed-9f5aca292136191a');
+    expect(otherEdgeAttr.preferredLength).to.equal(0.30);
 
     // contained package edge
     const containedPackageEdgeEl = graphEl.children[12];
@@ -507,6 +511,7 @@ describe('jsonToNodes', function() {
     expect(containedPackageEdgeAttr.opacity).to.equal(1.0);
     expect(containedPackageEdgeAttr.fromId).to.equal('SPDXRef-DocumentRoot-Directory-sbom');
     expect(containedPackageEdgeAttr.toId).to.equal('SPDXRef-Package-apk-busybox-fef07e9c95ea2bda');
+    expect(containedPackageEdgeAttr.preferredLength).to.equal(0.60);
 
     expect(graphEl.children.length).to.equal(13); // no edge for SPDXRef-DOCUMENT DESCRIBES
   });

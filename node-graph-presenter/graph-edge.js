@@ -8,11 +8,10 @@ AFRAME.registerComponent('graph-edge', {
     color: {type: 'color'},
     opacity: {default: 1.0},
     fromId: {default: ''},
-    // naturalStart: {type: 'vec3'},
     start: {type: 'vec3'},
     toId: {default: ''},
-    // naturalEnd: {type: 'vec3'},
     end: {type: 'vec3'},
+    preferredLength: {default: 0.30}, // in meters; used when adjusting node positions
   },
 
   event: {

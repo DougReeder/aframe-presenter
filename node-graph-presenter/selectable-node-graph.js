@@ -2,7 +2,7 @@
 // Copyright © 2026 by Doug Reeder under the MIT License
 
 const SPREADING_FACTOR = 1.1;
-const SIM_SCALE = 200;
+const SIM_SCALE = 100;
 const FILE_INPT_ID = 'fileInput';
 // maximum size of base64-encoded data url w/ 13 required chars + MIME type
 const BASE64_CROQUET_MAX = 16384/4*3 - 13 - 255;
@@ -405,6 +405,7 @@ AFRAME.registerComponent('selectable-node-graph', {
 					simLinks.push({
 						source: data.fromId,
 						target: data.toId,
+						preferredLength: data.preferredLength,
 					});
 				}
 			}
@@ -457,7 +458,7 @@ AFRAME.registerComponent('selectable-node-graph', {
 		};
 
 		worker.onerror = errEvent => {
-			console.error(`forceGraphWorker error:`, errEvent);
+			console.error(`forceGraphWorker error “${errEvent.message}” ${errEvent.filename} line ${errEvent.lineno} column ${errEvent.colno}`);
 			this.showTransientMsg(`error arranging nodes`);
 		}
 	},
