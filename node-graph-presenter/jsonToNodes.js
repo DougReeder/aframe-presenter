@@ -34,14 +34,14 @@ async function jsonToNodes(url, graphEl) {
   const elMap = new Map();
   let rootId = null;
   for (const file of json?.files ?? []) {
-    let {id, title, notes, imageUrl, linkUrl, color, opacity, primitive, collapsed, position, size} = mapSpdxFile(file);
+    let {id, title, notes, imageUrl, linkUrl, color, opacity, primitive, details, collapsed, position, size} = mapSpdxFile(file);
 
-    createNodeEl(id, title, notes, imageUrl, linkUrl, color, opacity, primitive, collapsed, position, size);
+    createNodeEl(id, title, notes, imageUrl, linkUrl, color, opacity, primitive, details, collapsed, position, size);
   }
   for (const pkg of json?.packages ?? []) {
-    let {id, title, notes, imageUrl, linkUrl, color, opacity, primitive, collapsed, position, size} = mapSpdxPackage(pkg);
+    let {id, title, notes, imageUrl, linkUrl, color, opacity, primitive, details, collapsed, position, size} = mapSpdxPackage(pkg);
 
-    createNodeEl(id, title, notes, imageUrl, linkUrl, color, opacity, primitive, collapsed, position, size);
+    createNodeEl(id, title, notes, imageUrl, linkUrl, color, opacity, primitive, details, collapsed, position, size);
   }
 
   // moves the main package to the center of the graph
@@ -104,7 +104,7 @@ async function jsonToNodes(url, graphEl) {
   console.debug("nodes & edges:", graph.children);
   return {errors, warnings, info};
 
-  function createNodeEl(id, title, notes, imageUrl, linkUrl, color, opacity, primitive, collapsed, position, size) {
+  function createNodeEl(id, title, notes, imageUrl, linkUrl, color, opacity, primitive, details, collapsed, position, size) {
     ++numObj;
 
     // edges refer to the _most recently_ defined node with the given ID
@@ -124,7 +124,7 @@ async function jsonToNodes(url, graphEl) {
     position.y ||= 0;
     if (!Number.isFinite(position.z)) { position.z = Math.random() * 2 - 1; }
 
-    el.setAttribute('graph-node', {id, title, notes, imageUrl, linkUrl, color, opacity, primitive, size, collapsed, naturalPosition: position});
+    el.setAttribute('graph-node', {id, title, notes, imageUrl, linkUrl, color, opacity, primitive, size, details, collapsed, naturalPosition: position});
     el.object3D.position.copy(position);
     // el.setAttribute('rotation', '0 45 0');
     // el.object3D.scale.set(size, size, size);
@@ -263,13 +263,15 @@ function mapSpdxFile(file) {
 
   const primitive = 'octahedron';
 
+  const details = false;
+
   const collapsed = false;
 
   const position = new THREE.Vector3(NaN, NaN, NaN);
 
   const size = 0.05;   // we could encode something as size
 
-  return {id, title, notes, imageUrl, linkUrl, color, opacity, primitive, collapsed, position, size};
+  return {id, title, notes, imageUrl, linkUrl, color, opacity, primitive, details, collapsed, position, size};
 }
 
 function mapSpdxPackage(pkg) {
@@ -330,13 +332,15 @@ function mapSpdxPackage(pkg) {
   }
   primitive ??= 'torusKnot';
 
+  const details = false;
+
   const collapsed = false;
 
   const position = new THREE.Vector3(NaN, NaN, NaN);
 
   const size = 0.05;   // we could encode something as size
 
-  return {id, title, notes, imageUrl, linkUrl, color, opacity, primitive, collapsed, position, size};
+  return {id, title, notes, imageUrl, linkUrl, color, opacity, primitive, details, collapsed, position, size};
 }
 
 const RELATIONSHIP_TO_COLOR = {

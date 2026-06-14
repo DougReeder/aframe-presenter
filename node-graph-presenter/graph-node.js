@@ -12,6 +12,7 @@ AFRAME.registerComponent('graph-node', {
     opacity: {default: 1.0},
     primitive: {default: 'box'},
     size: {default: 0.05},           // in meters
+    details: {default: false},
     collapsed: {default: false},
     naturalPosition: {type: 'vec3'}, // before spreading
   },
@@ -21,13 +22,14 @@ AFRAME.registerComponent('graph-node', {
 
   init: function () {
     // console.debug(`graph-node init `, this.data);
+    this.handlers = {};
+    this.handlers.toggleDetails = this.toggleDetails.bind(this);
+    this.el.addEventListener('click', this.handlers.toggleDetails);
 
     this.setNodeGeometry(this.data.primitive, this.data.size);
     const isFlat = ['plane', 'circle', 'ring', 'triangle'].includes(this.data.primitive);
     this.setNodeMaterial(this.data.color, this.data.opacity, isFlat);
   },
-
-  handlers: {},
 
   update: function (oldData) {
     const isFlat = ['plane', 'circle', 'ring', 'triangle'].includes(this.data.primitive);
@@ -53,11 +55,13 @@ AFRAME.registerComponent('graph-node', {
     if ((this.data.title || oldData.title) && this.data.title !== oldData.title) {
       this.setNodeTitle(this.data.title, this.data.size, isFlat);
     }
-    if ((this.data.notes || oldData.notes) && this.data.notes !== oldData.notes ) {
-      this.setNotesChild(this.data.notes, this.data.size);
+    if ((this.data.notes || oldData.notes) &&
+        (this.data.notes !== oldData.notes || this.data.size !== oldData.size || this.data.details !== oldData.details)) {
+      this.setNotesChild(this.data.notes, this.data.size, this.data.details);
     }
-    if ((this.data.linkUrl || oldData.linkUrl) && this.data.linkUrl !== oldData.linkUrl) {
-      this.setLinkChild(this.data.linkUrl, this.data.size);
+    if ((this.data.linkUrl || oldData.linkUrl) &&
+        (this.data.linkUrl !== oldData.linkUrl || this.data.size !== oldData.size || this.data.details !== oldData.details)) {
+      this.setLinkChild(this.data.linkUrl, this.data.size, this.data.details);
     }
   },
 
@@ -150,9 +154,9 @@ AFRAME.registerComponent('graph-node', {
       side: 'double'});
   },
 
-  setNotesChild: function (notes, size) {
+  setNotesChild: function (notes, size, details) {
     this.el.querySelector('a-text')?.remove();
-    if (!notes) return;
+    if (!notes || !details) return;
 
     const textEl = document.createElement('a-text');
     textEl.object3D.position.set(0, size, 0);
@@ -168,9 +172,9 @@ AFRAME.registerComponent('graph-node', {
     this.el.appendChild(textEl);
   },
 
-  setLinkChild: function (linkUrl, size) {
+  setLinkChild: function (linkUrl, size, details) {
     this.el.querySelector('a-link')?.remove();
-    if (!linkUrl) return;
+    if (!linkUrl || !details) return;
 
     const linkEl = document.createElement('a-link');
     linkEl.object3D.position.set(0, -(size/2 + 0.04), 0);
@@ -181,6 +185,10 @@ AFRAME.registerComponent('graph-node', {
     linkEl.setAttribute('on', 'raycaster-intersected');
     linkEl.classList.add(PRESENTATION_CLASS);
     this.el.appendChild(linkEl);
+  },
+
+  toggleDetails: function (evt) {
+    this.el.setAttribute('graph-node', {details: !this.data.details});
   },
 
   // play: function () {},

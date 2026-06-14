@@ -9,6 +9,7 @@ const FALLBACK_COLOR = '#ccc';
 const PRESENTATION_CLASS = 'presentation';
 const CONTROLLER_NAME_LEFT = 'controllerLeft';
 const CONTROLLER_NAME_RIGHT = 'controllerRight';
+const RAYCASTER_CONFIG = {objects: '.' + PRESENTATION_CLASS, lineOpacity: 0.667, far: 4};
 const CURSOR_PREFIX_LEFT = 'cursor-left-';
 const CURSOR_PREFIX_RIGHT = 'cursor-right-';
 const HELP_TEXT =
@@ -53,6 +54,7 @@ AFRAME.registerComponent('presenter', {
 		this.handlers.endCursorLeft = this.endCursor.bind(this, CURSOR_PREFIX_LEFT);
 		this.handlers.endCursorRight = this.endCursor.bind(this, CURSOR_PREFIX_RIGHT);
 		this.handlers.enterXR = this.enterXR.bind(this);
+		this.handlers.exitXR = this.exitXR.bind(this);
 		this.handlers.sessionVisibilityChange = this.sessionVisibilityChange.bind(this);
 		this.handlers.scalePresentation = this.scalePresentation.bind(this);
 
@@ -127,16 +129,13 @@ AFRAME.registerComponent('presenter', {
 
 			if (AFRAME.utils.device.checkHeadsetConnected()) {
 				el.sceneEl.addEventListener('enter-vr', this.handlers.enterXR);
+				el.sceneEl.addEventListener('exit-vr', this.handlers.exitXR);
 
 				const controlsConfiguration = {hand: 'left'};
 				const leftController = document.createElement('a-entity');
 				leftController.setAttribute('id', CONTROLLER_NAME_LEFT);
 				leftController.setAttribute('laser-controls', controlsConfiguration);
-				leftController.setAttribute('raycaster', {
-					objects: '.' + PRESENTATION_CLASS,
-					lineOpacity: 0.667,
-					far: 10
-				});
+				leftController.setAttribute('raycaster', RAYCASTER_CONFIG);
 				leftController.addEventListener('raycaster-intersection', this.handlers.beginCursorLeft);
 				leftController.addEventListener('raycaster-intersection-cleared', this.handlers.endCursorLeft);
 				this.rig.appendChild(leftController);
@@ -154,11 +153,7 @@ AFRAME.registerComponent('presenter', {
 				const rightController = document.createElement('a-entity');
 				rightController.setAttribute('id', CONTROLLER_NAME_RIGHT);
 				rightController.setAttribute('laser-controls', controlsConfiguration);
-				rightController.setAttribute('raycaster', {
-					objects: '.' + PRESENTATION_CLASS,
-					lineOpacity: 0.667,
-					far: 10
-				});
+				rightController.setAttribute('raycaster', RAYCASTER_CONFIG);
 				rightController.addEventListener('raycaster-intersection', this.handlers.beginCursorRight);
 				rightController.addEventListener('raycaster-intersection-cleared', this.handlers.endCursorRight);
 				this.rig.appendChild(rightController);
@@ -498,7 +493,19 @@ drag to rotate
 	},
 
 	enterXR: function (evt) {
+		this.raycasterConfigSceneCache = structuredClone(this.el.sceneEl.getAttribute("raycaster"));
+		this.el.sceneEl.removeAttribute("cursor__mouse");
+		this.el.sceneEl.removeAttribute("cursor__xrselect");
+		this.el.sceneEl.removeAttribute("raycaster");
+
 		this.el.sceneEl.xrSession.addEventListener('visibilitychange', this.handlers.sessionVisibilityChange);
+	},
+	exitXR: function (_evt) {
+		// Important: set raycaster first, then cursor, this is because cursor is setting raycaster with objects: ""
+		// so it would do extra work and gives warnings about it.
+		this.el.sceneEl.setAttribute("raycaster", this.raycasterConfigSceneCache);
+		this.el.sceneEl.setAttribute("cursor__mouse", "rayOrigin:mouse");
+		this.el.sceneEl.setAttribute("cursor__xrselect", "rayOrigin:mouse");
 	},
 
 	/** handles both left & right cursors */
