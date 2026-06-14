@@ -310,10 +310,12 @@ AFRAME.registerComponent('selectable-node-graph', {
 				case 'https:':
 				case 'http:':
 					const headResponse = await fetch(graphUrl, {method: 'HEAD'});
-					contentType = headResponse.headers.get('content-type');
+					// Firefox incorrectly returns a comma-separated list of content-types.
+					contentType = headResponse.headers.get('content-type')?.split(',')?.pop()?.trim();
 					if (headResponse.ok && !contentType || [401, 403, 405, 407, 408].includes(headResponse.status)) {
+						// Some servers incorrectly return different status or headers for GET and HEAD.
 						const getResponse = await fetch(graphUrl, {method: 'GET'});
-						contentType = getResponse.headers.get('content-type');
+						contentType = getResponse.headers.get('content-type')?.split(',')?.pop()?.trim();
 						if (! getResponse.ok) {
 							throw new Error(`Unable to read URL: ${getResponse.statusText || getResponse.status}`);
 						}
