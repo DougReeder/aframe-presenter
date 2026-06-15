@@ -23,8 +23,10 @@ AFRAME.registerComponent('graph-node', {
   init: function () {
     // console.debug(`graph-node init `, this.data);
     this.handlers = {};
-    this.handlers.toggleDetails = this.toggleDetails.bind(this);
-    this.el.addEventListener('click', this.handlers.toggleDetails);
+    this.handlers.showDetails = this.showDetails.bind(this);
+    this.el.addEventListener('mouseenter', this.handlers.showDetails);
+    this.handlers.hideDetails = this.hideDetails.bind(this);
+    this.el.addEventListener('mouseleave', this.handlers.hideDetails);
 
     this.setNodeGeometry(this.data.primitive, this.data.size);
     const isFlat = ['plane', 'circle', 'ring', 'triangle'].includes(this.data.primitive);
@@ -187,8 +189,12 @@ AFRAME.registerComponent('graph-node', {
     this.el.appendChild(linkEl);
   },
 
-  toggleDetails: function (evt) {
-    this.el.setAttribute('graph-node', {details: !this.data.details});
+  showDetails: function (_evt) {
+    this.el.setAttribute('graph-node', {details: true});
+  },
+
+  hideDetails: function (_evt) {
+    this.el.setAttribute('graph-node', {details: false});
   },
 
   // play: function () {},
