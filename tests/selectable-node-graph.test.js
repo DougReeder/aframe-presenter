@@ -199,4 +199,108 @@ describe('selectable-node-graph component', function() {
         expect(nodeEl).to.exist;
         expect(nodeEl.object3D.position.x).to.equal(4);
     });
+
+    it('should make children non-visible when a node with all child nodes visible is clicked', async function() {
+        const csvData = 'Uuid,Title,PositionX,PositionY,PositionZ,Color,Size,Shape,Collapsed,FromUuid,ToUuid\n' +
+            'parentA,Parent Node A,0,0,0,ff0000,5,Ball,No,,\n' +
+            'parentB,Parent Node B,0,0,0,ff0000,5,Box,No,,\n' +
+            'child1,Child 1,1,1,1,00ff00,5,Ball,No,,\n' +
+            'child2,Child 2,-1,-1,-1,0000ff,5,Ball,No,,\n' +
+            ',Edge A1,NaN,NaN,NaN,808080,5,Ball,No,parentA,child1\n' +
+            ',Edge A2,NaN,NaN,NaN,808080,5,Ball,No,parentA,child2\n' +
+            ',Edge B1,NaN,NaN,NaN,808080,5,Ball,No,parentB,child1\n';
+        const blob = new Blob([csvData], { type: 'text/csv' });
+        blobUrl = URL.createObjectURL(blob);
+
+        el.setAttribute('selectable-node-graph', 'src', blobUrl);
+
+        await new Promise(resolve => {
+            const handleLoaded = () => {
+                el.removeEventListener('graph-loaded', handleLoaded);
+                resolve();
+            };
+            el.addEventListener('graph-loaded', handleLoaded);
+        });
+
+        const parentAEl = Array.from(el.children).find(c => c.id === 'parentA');
+        const parentBEl = Array.from(el.children).find(c => c.id === 'parentB');
+        const child1El = Array.from(el.children).find(c => c.id === 'child1');
+        const child2El = Array.from(el.children).find(c => c.id === 'child2');
+        const edgeA1El = Array.from(el.children).find(c => c.components['graph-edge']?.data.fromId === 'parentA' && c.components['graph-edge']?.data.toId === 'child1');
+        const edgeA2El = Array.from(el.children).find(c => c.components['graph-edge']?.data.toId === 'child2');
+        const edgeB1El = Array.from(el.children).find(c => c.components['graph-edge']?.data.fromId === 'parentB' && c.components['graph-edge']?.data.toId === 'child1');
+
+        expect(parentAEl).to.exist;
+        expect(parentBEl).to.exist;
+        expect(child1El).to.exist;
+        expect(child2El).to.exist;
+        expect(edgeA1El).to.exist;
+        expect(edgeA2El).to.exist;
+        expect(edgeB1El).to.exist;
+
+        // Ensures children & edges are visible for testing
+        child1El.setAttribute('visible', true);
+        child2El.setAttribute('visible', true);
+        edgeA1El.setAttribute('visible', true);
+        edgeA2El.setAttribute('visible', false);
+        edgeB1El.setAttribute('visible', true);
+
+        // Trigger click on parentA
+        parentAEl.emit('click', { target: parentAEl });
+
+        // Verify children and edges are now visible
+        expect(child1El.getAttribute('visible')).to.be.true;   // has visible un-clicked parentB
+        expect(child2El.getAttribute('visible')).to.be.false;
+        expect(edgeA1El.getAttribute('visible')).to.be.true;   // child1 is visible
+        expect(edgeA2El.getAttribute('visible')).to.be.false;
+        expect(edgeB1El.getAttribute('visible')).to.be.true;   // from visible un-clicked parent
+    });
+
+    it('should make all children visible when a node with some non-visible child nodes is clicked', async function() {
+        const csvData = 'Uuid,Title,PositionX,PositionY,PositionZ,Color,Size,Shape,Collapsed,FromUuid,ToUuid\n' +
+            'parent,Parent Node,0,0,0,ff0000,5,Ball,No,,\n' +
+            'child1,Child 1,1,1,1,00ff00,5,Ball,No,,\n' +
+            'child2,Child 2,-1,-1,-1,0000ff,5,Ball,No,,\n' +
+            ',Edge 1,NaN,NaN,NaN,808080,5,Ball,No,parent,child1\n' +
+            ',Edge 2,NaN,NaN,NaN,808080,5,Ball,No,parent,child2';
+        const blob = new Blob([csvData], { type: 'text/csv' });
+        blobUrl = URL.createObjectURL(blob);
+
+        el.setAttribute('selectable-node-graph', 'src', blobUrl);
+
+        await new Promise(resolve => {
+            const handleLoaded = () => {
+                el.removeEventListener('graph-loaded', handleLoaded);
+                resolve();
+            };
+            el.addEventListener('graph-loaded', handleLoaded);
+        });
+
+        const parentEl = Array.from(el.children).find(c => c.id === 'parent');
+        const child1El = Array.from(el.children).find(c => c.id === 'child1');
+        const child2El = Array.from(el.children).find(c => c.id === 'child2');
+        const edge1El = Array.from(el.children).find(c => c.components['graph-edge']?.data.toId === 'child1');
+        const edge2El = Array.from(el.children).find(c => c.components['graph-edge']?.data.toId === 'child2');
+
+        expect(parentEl).to.exist;
+        expect(child1El).to.exist;
+        expect(child2El).to.exist;
+        expect(edge1El).to.exist;
+        expect(edge2El).to.exist;
+
+        // Manually hide children and edges for testing
+        child1El.setAttribute('visible', false);
+        child2El.setAttribute('visible', true);
+        edge1El.setAttribute('visible', true);
+        edge2El.setAttribute('visible', true);
+
+        // Trigger click on parent
+        parentEl.emit('click', { target: parentEl });
+
+        // Verify children and edges are now visible
+        expect(child1El.getAttribute('visible')).to.be.true;
+        expect(child2El.getAttribute('visible')).to.be.true;
+        expect(edge1El.getAttribute('visible')).to.be.true;
+        expect(edge2El.getAttribute('visible')).to.be.true;
+    });
 });

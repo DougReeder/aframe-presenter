@@ -36,12 +36,12 @@ async function jsonToNodes(url, graphEl) {
   for (const file of json?.files ?? []) {
     let {id, title, notes, imageUrl, linkUrl, color, opacity, primitive, details, collapsed, position, size} = mapSpdxFile(file);
 
-    createNodeEl(id, title, notes, imageUrl, linkUrl, color, opacity, primitive, details, collapsed, position, size);
+    createNodeEl(id, title, notes, imageUrl, linkUrl, color, opacity, primitive, details, collapsed, position, size, false);
   }
   for (const pkg of json?.packages ?? []) {
     let {id, title, notes, imageUrl, linkUrl, color, opacity, primitive, details, collapsed, position, size} = mapSpdxPackage(pkg);
 
-    createNodeEl(id, title, notes, imageUrl, linkUrl, color, opacity, primitive, details, collapsed, position, size);
+    createNodeEl(id, title, notes, imageUrl, linkUrl, color, opacity, primitive, details, collapsed, position, size, true);
   }
 
   // moves the main package to the center of the graph
@@ -60,7 +60,7 @@ async function jsonToNodes(url, graphEl) {
   const edges = [];
   for (const relationship of json?.relationships ?? []) {
     ++numObj;
-    let {action, title, color, fromId, toId, preferredLength} = mapSpdxRelationship(relationship);
+    let {action, title, color, fromId, toId, preferredLength, visible} = mapSpdxRelationship(relationship);
 
     if ('ROOT_ID' === action) {
       rootId = title;
@@ -87,6 +87,7 @@ async function jsonToNodes(url, graphEl) {
       toId, end,
       preferredLength,
     });
+    edgeEl.setAttribute('visible', visible);
     graphEl.appendChild(edgeEl);
     edges.push(edgeEl);
     ++numEdges;
@@ -104,7 +105,7 @@ async function jsonToNodes(url, graphEl) {
   console.debug("nodes & edges:", graph.children);
   return {errors, warnings, info};
 
-  function createNodeEl(id, title, notes, imageUrl, linkUrl, color, opacity, primitive, details, collapsed, position, size) {
+  function createNodeEl(id, title, notes, imageUrl, linkUrl, color, opacity, primitive, details, collapsed, position, size, visible = true) {
     ++numObj;
 
     // edges refer to the _most recently_ defined node with the given ID
@@ -128,8 +129,10 @@ async function jsonToNodes(url, graphEl) {
     el.object3D.position.copy(position);
     // el.setAttribute('rotation', '0 45 0');
     // el.object3D.scale.set(size, size, size);
+    el.setAttribute('visible', visible);
+    el.object3D.visible = visible;
     el.object3D.userData.id = id;
-    el.classList.add(PRESENTATION_CLASS);
+    if (visible) { el.classList.add(PRESENTATION_CLASS); }
     graphEl.appendChild(el);
 
     ++numNodes;
@@ -148,8 +151,10 @@ async function jsonToNodes(url, graphEl) {
     const color = RELATIONSHIP_TO_COLOR[relationship.relationshipType] || '#808080';
 
     const fromId = relationship.spdxElementId;
+    const fromVisible = elMap.get(fromId)?.getAttribute('visible');
 
     const toId = relationship.relatedSpdxElement;
+    const toVisible = elMap.get(toId)?.getAttribute('visible');
     const toData = elMap.get(toId)?.components['graph-node']?.data;
 
     // files should be closer to their packages
@@ -157,7 +162,7 @@ async function jsonToNodes(url, graphEl) {
     const isContainsFile = relationship.relationshipType === 'CONTAINS' && toData?.primitive === 'octahedron';
     const preferredLength = isContainsFile ? 0.08 : 0.30;
 
-    return {action: 'EDGE', title, color, fromId, toId, preferredLength};
+    return {action: 'EDGE', title, color, fromId, toId, preferredLength, visible: fromVisible && toVisible};
   }
 }
 

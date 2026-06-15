@@ -40,6 +40,7 @@ AFRAME.registerComponent('selectable-node-graph', {
 		this.handlers.horizontalSmaller = this.incrementSpread.bind(this, 1/SPREADING_FACTOR, 1);
 		this.handlers.verticalLarger = this.incrementSpread.bind(this, 1, SPREADING_FACTOR);
 		this.handlers.verticalSmaller = this.incrementSpread.bind(this, 1, 1/SPREADING_FACTOR);
+		this.handlers.toggleNode = this.toggleNode.bind(this);
 
 		const controlStrip = document.createElement('div');
 		controlStrip.style.width = 'calc(100% - 1em - 65px)';
@@ -121,6 +122,8 @@ AFRAME.registerComponent('selectable-node-graph', {
 		this.el.addEventListener('horizontal-smaller', this.handlers.horizontalSmaller);
 		this.el.addEventListener('vertical-larger', this.handlers.verticalLarger);
 		this.el.addEventListener('vertical-smaller', this.handlers.verticalSmaller);
+
+		this.el.addEventListener('click', this.handlers.toggleNode);
 	},
 
 	openUrl: function (evt) {
@@ -544,6 +547,101 @@ AFRAME.registerComponent('selectable-node-graph', {
 		if (! offset.equals(position)) {
 			this.el.setAttribute('position', offset);
 		}
+	},
+
+	toggleNode: function (evt) {
+		const toggledNodeId = evt.target.id;
+
+		const edges = [], childNodes = [], childNodeIds = [];
+		let allVisible = true;
+		for (const el of Array.from(this.el.children)) {
+			const elEdgeData = el.components['graph-edge']?.data;
+			if (elEdgeData?.fromId === toggledNodeId) {
+				edges.push(el);
+
+				const childNodeId = elEdgeData.toId;
+				const childNode = document.getElementById(childNodeId);
+				if (childNode) {
+					childNodes.push(childNode);
+					childNodeIds.push(childNodeId);
+					if (!(childNode?.getAttribute('visible'))) {
+						allVisible = false;
+					}
+				}
+			}
+		}
+		console.debug(`toggleNode ${toggledNodeId} allVisible was ${allVisible}`);
+		const newVisible = !allVisible;
+
+		if (newVisible) {
+			for (const childNode of childNodes) {
+				childNode.setAttribute('visible', true);
+				childNode.classList.add(PRESENTATION_CLASS);
+			}
+			for (const el of this.el.children) {
+				const elEdgeData = el.components['graph-edge']?.data;
+				if (childNodeIds.includes(elEdgeData?.toId) &&
+						document.getElementById(elEdgeData?.fromId)?.getAttribute('visible')) {
+					el.setAttribute('visible', true);
+				}
+			}
+		} else {
+			const descendantNodeIds = new Set(childNodeIds);
+			// toggledNodeId is in the set to curb circular references
+			descendantNodeIds.add(toggledNodeId);
+			for (const descendantNodeId of descendantNodeIds) {
+				if (descendantNodeId === toggledNodeId) { continue; }
+				this.addDescendantNodeIds(descendantNodeId, descendantNodeIds);
+			}
+			for (const descendantNodeId of descendantNodeIds) {
+				if (descendantNodeId === toggledNodeId) { continue; }
+				if (!this.hasVisibleParent(descendantNodeId, descendantNodeIds)) {
+					const descendantNodeEl = document.getElementById(descendantNodeId);
+					descendantNodeEl.setAttribute('visible', false);
+					descendantNodeEl.classList.remove(PRESENTATION_CLASS);
+					for (const el of this.el.children) {
+						const elEdgeData = el.components['graph-edge']?.data;
+						if (elEdgeData?.fromId === descendantNodeId || elEdgeData?.toId === descendantNodeId) {
+							el.setAttribute('visible', false);
+						}
+					}
+				}
+			}
+		}
+	},
+
+	/**
+	 * Locates all descendant nodes of a given node
+	 * @param {string} nodeId
+	 * @param {Set<string>} descendantNodeIds
+	 * @returns {Set<string>}
+	 */
+	addDescendantNodeIds: function (nodeId, descendantNodeIds) {
+		for (const el of this.el.children) {
+			const elEdgeData = el.components['graph-edge']?.data;
+			if (elEdgeData?.fromId === nodeId) {
+				if (!descendantNodeIds.has(elEdgeData.toId)) {
+					descendantNodeIds.add(elEdgeData.toId);
+					this.addDescendantNodeIds(elEdgeData.toId, descendantNodeIds);
+				}
+			}
+		}
+	},
+
+	/**
+	 * Determines if a given node has any visible parent that is not excluded.
+	 * @param {string} nodeId
+	 * @param{Set<string>} excludedParentNodeIds
+	 */
+	hasVisibleParent: function(nodeId, excludedParentNodeIds) {
+		for (const el of this.el.children) {
+			const elEdgeData = el.components['graph-edge']?.data;
+			if (elEdgeData?.toId === nodeId && !excludedParentNodeIds.has(elEdgeData.fromId) &&
+					document.getElementById(elEdgeData?.fromId)?.getAttribute('visible')) {
+				return true;
+			}
+		}
+		return false;
 	},
 
 	pause: function () {
