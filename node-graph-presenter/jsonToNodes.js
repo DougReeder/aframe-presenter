@@ -3,6 +3,7 @@
 
 async function jsonToNodes(url, graphEl) {
   console.debug('jsonToNodes: url = ' + url);
+  let lastYield = Date.now();
 
   const errors = [];
   const warnings = [];
@@ -34,11 +35,21 @@ async function jsonToNodes(url, graphEl) {
   const elMap = new Map();
   let rootId = null;
   for (const file of json?.files ?? []) {
+    if (Date.now() - lastYield > YIELD_DEADLINE) {
+      await yield();
+      lastYield = Date.now();
+    }
+
     let {id, title, notes, imageUrl, linkUrl, color, opacity, primitive, details, collapsed, position, size} = mapSpdxFile(file);
 
     createNodeEl(id, title, notes, imageUrl, linkUrl, color, opacity, primitive, details, collapsed, position, size, false);
   }
   for (const pkg of json?.packages ?? []) {
+    if (Date.now() - lastYield > YIELD_DEADLINE) {
+      await yield();
+      lastYield = Date.now();
+    }
+
     let {id, title, notes, imageUrl, linkUrl, color, opacity, primitive, details, collapsed, position, size} = mapSpdxPackage(pkg);
 
     createNodeEl(id, title, notes, imageUrl, linkUrl, color, opacity, primitive, details, collapsed, position, size, true);
@@ -59,6 +70,11 @@ async function jsonToNodes(url, graphEl) {
 
   const edges = [];
   for (const relationship of json?.relationships ?? []) {
+    if (Date.now() - lastYield > YIELD_DEADLINE) {
+      await yield();
+      lastYield = Date.now();
+    }
+
     ++numObj;
     let {action, title, color, fromId, toId, preferredLength, visible} = mapSpdxRelationship(relationship);
 

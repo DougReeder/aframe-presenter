@@ -3,6 +3,7 @@
 
 async function csvToNodes(url, flavorCsv, graphEl) {
   console.debug('csvToNodes: url = ' + url);
+  let lastYield = Date.now();
 
   for (const child of Array.from(graphEl.children)) {
     child.remove();
@@ -23,7 +24,7 @@ async function csvToNodes(url, flavorCsv, graphEl) {
       // dynamicTyping: {PositionX: true, PositionY: true, PositionZ: true, Opacity: true, Size: true},
       worker: true,
       skipEmptyLines: 'greedy',
-      complete: function(result) {
+      complete: async function(result) {
         if (!result || typeof result !== "object" ) {
           console.error('Papa Parse result not object:', result);
           // reject(new Error('Papa Parse result not object'));   // can't be certain it's already rejected
@@ -39,6 +40,11 @@ async function csvToNodes(url, flavorCsv, graphEl) {
 
         let numNodes = 0, numEdges = 0;
         for (let row of data) {
+          if (Date.now() - lastYield > YIELD_DEADLINE) {
+            await yield();
+            lastYield = Date.now();
+          }
+
           let id, title, notes, imageUrl, linkUrl, color, opacity, primitive, collapsed, position, size, fromId, toId;
           switch (flavorCsv) {   // the flavorCsv determines what fields of row to read
             case 'NODA':
