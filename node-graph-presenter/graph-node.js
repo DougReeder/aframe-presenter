@@ -14,6 +14,7 @@ AFRAME.registerComponent('graph-node', {
     size: {default: 0.05},           // in meters
     details: {default: false},
     collapsed: {default: false},
+    numChildren: {default: 0},
     naturalPosition: {type: 'vec3'}, // before spreading
   },
 
@@ -56,6 +57,9 @@ AFRAME.registerComponent('graph-node', {
     }
     if ((this.data.title || oldData.title) && this.data.title !== oldData.title) {
       this.setNodeTitle(this.data.title, this.data.size, isFlat);
+    }
+    if ((this.data.numChildren || oldData.numChildren) && this.data.numChildren !== oldData.numChildren) {
+      this.setCountChild(this.data.numChildren, this.data.size);
     }
     if ((this.data.notes || oldData.notes) &&
         (this.data.notes !== oldData.notes || this.data.size !== oldData.size || this.data.details !== oldData.details)) {
@@ -154,6 +158,21 @@ AFRAME.registerComponent('graph-node', {
       width: size * 6, /*height: 1,*/
       wrapCount: 25,
       side: 'double'});
+  },
+
+  setCountChild: function (numChildren, size) {
+    if (numChildren) {
+      this.el.setAttribute('text__count', {
+        value: '' + numChildren,
+        xOffset: size / 2,
+        zOffset: -size / 2,
+        anchor: 'left',
+        width: size * 5,
+        side: 'double'
+      });
+    } else {
+      this.el.setAttribute('text__count', {});
+    }
   },
 
   setNotesChild: function (notes, size, details) {

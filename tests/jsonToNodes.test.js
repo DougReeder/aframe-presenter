@@ -76,6 +76,7 @@ describe('jsonToNodes', function() {
     expect(graphNodeAttr.imageUrl).to.equal('');
     expect(graphNodeAttr.linkUrl).to.equal('https://github.com/owner/foo-app');
     expect(graphNodeAttr.collapsed).to.be.false;
+    expect(graphNodeAttr.numChildren).to.equal(0);
   });
 
   it('should parse a SPDX JSON with package nodes and relationship edges', async function() {
@@ -154,6 +155,7 @@ describe('jsonToNodes', function() {
     expect(expressNodeAttr.imageUrl).to.equal('');
     expect(expressNodeAttr.linkUrl).to.equal('https://npmjs.org');
     expect(expressNodeAttr.collapsed).to.be.false;
+    expect(expressNodeAttr.numChildren).to.equal(0);
 
     const barEl = graphEl.children[1];
     expect(barEl.getAttribute('id')).to.equal('SPDXRef-github-owner-bar-app-main-229496');
@@ -173,6 +175,7 @@ describe('jsonToNodes', function() {
     expect(barNodeAttr.imageUrl).to.equal('');
     expect(barNodeAttr.linkUrl).to.equal('https://github.com/owner/bar-app');
     expect(barNodeAttr.collapsed).to.be.false;
+    expect(barNodeAttr.numChildren).to.equal(1);
 
     // Edges are added as a-entities w/ graph-edge components
     const edgeEl = graphEl.children[2];
@@ -414,6 +417,7 @@ describe('jsonToNodes', function() {
     expect(fileBusyboxAttr.imageUrl).to.equal('');
     expect(fileBusyboxAttr.linkUrl).to.equal('');
     expect(fileBusyboxAttr.collapsed).to.be.false;
+    expect(fileBusyboxAttr.numChildren).to.equal(0);
 
     const pkgBusyboxEl = graphEl.children[3];
     expect(pkgBusyboxEl.getAttribute('id')).to.equal('SPDXRef-Package-apk-busybox-fef07e9c95ea2bda');
@@ -433,6 +437,7 @@ describe('jsonToNodes', function() {
     expect(pkgBusyboxAttr.imageUrl).to.equal('');
     expect(pkgBusyboxAttr.linkUrl).to.equal('https://busybox.net/');
     expect(pkgBusyboxAttr.collapsed).to.be.false;
+    expect(pkgBusyboxAttr.numChildren).to.equal(3);
 
     const docRootEl = graphEl.children[5];
     expect(docRootEl.getAttribute('id')).to.equal('SPDXRef-DocumentRoot-Directory-sbom');
@@ -452,6 +457,7 @@ describe('jsonToNodes', function() {
     expect(docRootAttr.imageUrl).to.equal('');
     expect(docRootAttr.linkUrl).to.equal('https://example.com/sbom.zip');
     expect(docRootAttr.collapsed).to.be.false;
+    expect(docRootAttr.numChildren).to.equal(2);
 
     // contained files are added as a-entities w/ graph-edge components
     const edgeEl = graphEl.children[6];

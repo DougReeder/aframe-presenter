@@ -151,7 +151,10 @@ async function jsonToNodes(url, graphEl) {
     const color = RELATIONSHIP_TO_COLOR[relationship.relationshipType] || '#808080';
 
     const fromId = relationship.spdxElementId;
-    const fromVisible = elMap.get(fromId)?.getAttribute('visible');
+    const fromEl = elMap.get(fromId);
+    const fromVisible = fromEl?.getAttribute('visible');
+    const fromCount = fromEl?.components['graph-node']?.data?.numChildren || 0;
+    fromEl?.setAttribute('graph-node', {numChildren: fromCount + 1});
 
     const toId = relationship.relatedSpdxElement;
     const toVisible = elMap.get(toId)?.getAttribute('visible');
