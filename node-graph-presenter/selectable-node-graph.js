@@ -549,8 +549,9 @@ AFRAME.registerComponent('selectable-node-graph', {
 		}
 	},
 
-	toggleNode: function (evt) {
+	toggleNode: async function (evt) {
 		const toggledNodeId = evt.target.id;
+		let lastYield = Date.now();
 
 		const edges = [], childNodes = [], childNodeIds = [];
 		let allVisible = true;
@@ -591,11 +592,19 @@ AFRAME.registerComponent('selectable-node-graph', {
 			descendantNodeIds.add(toggledNodeId);
 			for (const descendantNodeId of descendantNodeIds) {
 				if (descendantNodeId === toggledNodeId) { continue; }
+				if (Date.now() - lastYield > YIELD_DEADLINE) {
+					await yield();
+					lastYield = Date.now();
+				}
 				this.addDescendantNodeIds(descendantNodeId, descendantNodeIds);
 			}
 			for (const descendantNodeId of descendantNodeIds) {
 				if (descendantNodeId === toggledNodeId) { continue; }
-				if (!this.hasVisibleParent(descendantNodeId, descendantNodeIds)) {
+				if (Date.now() - lastYield > YIELD_DEADLINE) {
+					await yield();
+					lastYield = Date.now();
+				}
+				if (this.allParentsHidden(descendantNodeId, descendantNodeIds)) {
 					const descendantNodeEl = document.getElementById(descendantNodeId);
 					descendantNodeEl.setAttribute('visible', false);
 					descendantNodeEl.classList.remove(PRESENTATION_CLASS);
@@ -614,7 +623,6 @@ AFRAME.registerComponent('selectable-node-graph', {
 	 * Locates all descendant nodes of a given node
 	 * @param {string} nodeId
 	 * @param {Set<string>} descendantNodeIds
-	 * @returns {Set<string>}
 	 */
 	addDescendantNodeIds: function (nodeId, descendantNodeIds) {
 		for (const el of this.el.children) {
@@ -632,16 +640,17 @@ AFRAME.registerComponent('selectable-node-graph', {
 	 * Determines if a given node has any visible parent that is not excluded.
 	 * @param {string} nodeId
 	 * @param{Set<string>} excludedParentNodeIds
+	 * @returns {boolean}
 	 */
-	hasVisibleParent: function(nodeId, excludedParentNodeIds) {
+	allParentsHidden: function (nodeId, excludedParentNodeIds) {
 		for (const el of this.el.children) {
 			const elEdgeData = el.components['graph-edge']?.data;
 			if (elEdgeData?.toId === nodeId && !excludedParentNodeIds.has(elEdgeData.fromId) &&
 					document.getElementById(elEdgeData?.fromId)?.getAttribute('visible')) {
-				return true;
+				return false;
 			}
 		}
-		return false;
+		return true;
 	},
 
 	pause: function () {
