@@ -37,6 +37,7 @@ AFRAME.registerComponent('presenter', {
 
 	/** Called once when component is attached. Generally for initial setup. */
 	init: function () {
+		this.handlers.messageListener = this.messageListener.bind(this);
 		this.handlers.shareSession = this.shareSession.bind(this);
 		this.handlers.copySessionUrl = this.copySessionUrl.bind(this);
 		this.handlers.showHelp = this.showPersistentMsg.bind(this, HELP_TEXT);
@@ -57,6 +58,8 @@ AFRAME.registerComponent('presenter', {
 		this.handlers.exitXR = this.exitXR.bind(this);
 		this.handlers.sessionVisibilityChange = this.sessionVisibilityChange.bind(this);
 		this.handlers.scalePresentation = this.scalePresentation.bind(this);
+
+		window.addEventListener("message", this.handlers.messageListener);
 
 		const controlStrip = document.createElement('div');
 		controlStrip.style.height = '40px';
@@ -200,7 +203,7 @@ AFRAME.registerComponent('presenter', {
 			await navigator.share(data);
 		} catch (err) {
 			if ("AbortError" !== err.name) {
-				this.showTransientMsg(`Sharing failed: ` + (err.message || err.name || err?.toString()));
+				postMessage({kind: 'TRANSIENT_MSG', msg: `Sharing failed: ` + (err.message || err.name || err?.toString())});
 			}
 		}
 	},
@@ -208,9 +211,9 @@ AFRAME.registerComponent('presenter', {
 	copySessionUrl: async function (_evt) {
 		try {
 			await navigator.clipboard.writeText(window.location.href);
-			this.showTransientMsg(`Paste the URL into your meeting text chat`);
+			postMessage({kind: 'TRANSIENT_MSG', msg: `Paste the URL into your meeting text chat`});
 		} catch (err) {
-			this.showTransientMsg(`Copy failed: ` + (err.message || err.name || err?.toString()));
+			postMessage({kind: 'TRANSIENT_MSG', msg: `Copy failed: ` + (err.message || err.name || err?.toString())});
 		}
 	},
 
@@ -285,7 +288,7 @@ drag to rotate
 			}
 		}
 
-		this.showTransientMsg(`Your color is ${evt.detail.color}.` + controlHelp, evt.detail.color);
+		postMessage({kind: 'TRANSIENT_MSG', msg: `Your color is ${evt.detail.color}.` + controlHelp, colorName: evt.detail.color});
 	},
 
 	userExit: function (evt) {
@@ -539,7 +542,8 @@ drag to rotate
 		const newPresentation = document.getElementById(this.data.presentationId);
 		newPresentation?.classList.add(PRESENTATION_CLASS);
 		if (!newPresentation) {
-			this.showPersistentMsg(`no element with presentation id “${this.data.presentationId}”`);
+			postMessage({kind: 'PERSISTENT_MSG',
+				msg: `no element with presentation id “${this.data.presentationId}”`});
 		}
 
 		if (this.data.log) {
@@ -643,11 +647,36 @@ drag to rotate
 		this.el.removeEventListener('scalepresentation', this.handlers.scalePresentation);
 	},
 
-	showTransientMsg: function (msg, colorName) {
-		if (msg instanceof Error) {
-			msg = msg.message || msg.name || msg?.toString();
-		}
+	/**
+	 * listens for postMessage events from self and workers
+	 * @param evt.data.kind {string}
+	 * @param evt.data.msg {Error | string}
+	 * @param evt.data.isPersistent {boolean}
+	 * @param evt.data.colorName {string}
+	 */
+	messageListener: function (evt) {
+		if (evt.origin !== window.location.origin) return;
 
+		switch (evt.data?.kind) {
+			case 'TRANSIENT_MSG':
+			case 'PERSISTENT_MSG':
+				let msg = evt.data?.msg;
+				if (evt.data?.msg instanceof Error) {
+					msg = evt.data?.msg.message || evt.data?.msg.name || evt.data?.msg?.toString();
+				}
+				if ('PERSISTENT_MSG' === evt.data?.kind) {
+					this.showPersistentMsg(msg);
+				} else {
+					this.showTransientMsg(msg, evt.data?.colorName);
+				}
+				break;
+			case 'CLEAR_PERSISTENT_MSG':
+				this.clearPersistentMsg();
+				break;
+		}
+	},
+
+	showTransientMsg: function (msg, colorName) {
 		setTimeout( () => {
 			if (!this.transientDialog) {
 				this.transientDialog = document.createElement('dialog');
@@ -708,6 +737,10 @@ drag to rotate
 			this.persistentDialog.show();
 		}, 100);
 	},
+
+	clearPersistentMsg: function () {
+		this.persistentDialog?.close();
+	}
 });
 
 

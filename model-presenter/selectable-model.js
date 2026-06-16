@@ -147,14 +147,14 @@ AFRAME.registerComponent('selectable-model', {
 			this.modelNeedsScaling = true;
 		} else if (value?.length > 0) {
 			this.urlInput.value = '';
-			this.showTransientMsg(`“${value}” is not a URL`);
+			postMessage({kind: 'TRANSIENT_MSG', msg: `“${value}” is not a URL`});
 		}
 	},
 
 	openModelFile: function (evt) {
 		console.log(`openModelFile`, evt.detail);
 		this.fileInpt.click();
-		this.clearPersistentMsg();
+		postMessage({kind: 'CLEAR_PERSISTENT_MSG'});
 	},
 
 	fileInptChange: async function (_evt) {
@@ -167,7 +167,7 @@ AFRAME.registerComponent('selectable-model', {
 
 			await this.syncModel(this.fileInpt.files[0]);
 		} catch (err) {
-			this.showPersistentMsg(err);
+			postMessage({kind: 'PERSISTENT_MSG', msg: err});
 		}
 	},
 
@@ -193,11 +193,12 @@ AFRAME.registerComponent('selectable-model', {
 			if ('drop' === evt.type || 'INPUT' !== evt.target.tagName) {
 				evt.stopPropagation();
 				evt.preventDefault();
-				this.showTransientMsg(`Only a .GLB file can be ${'paste' === evt.type ? "pasted" : "dropped"} here`);
+				postMessage({kind: 'TRANSIENT_MSG',
+					msg: `Only a .GLB file can be ${'paste' === evt.type ? "pasted" : "dropped"} here`});
 			}
 		} catch (err) {
 			console.error("while dropping file:", err);
-			this.showPersistentMsg(err);
+			postMessage({kind: 'PERSISTENT_MSG', msg: err});
 		}
 	},
 
@@ -211,15 +212,17 @@ AFRAME.registerComponent('selectable-model', {
 				const croquetId = dataIF.toId(handle);
 				modelUrl = `multisynq:` + croquetId;
 			} catch (err) {
-				this.showPersistentMsg(err);
+				postMessage({kind: 'PERSISTENT_MSG', msg: err});
 			}
 		} else if (typeof dataIF?.store !== 'function') {
-			this.showPersistentMsg(`The Multisynq API for syncing files has changed`);
+			postMessage({kind: 'PERSISTENT_MSG',
+				msg: `The Croquet API for syncing files has changed`});
 		}
 		if (!modelUrl) {
 			modelUrl = await fileToDataUrl(file);
 			if (modelUrl.length > 16384) {
-				this.showPersistentMsg(`“${file.name}” is too big to sync to other users; upload it somewhere and paste the URL below`);
+				postMessage({kind: 'PERSISTENT_MSG',
+					msg: `“${file.name}” is too big to sync to other users; upload it somewhere and paste the URL below`});
 				modelUrl = URL.createObjectURL(file);
 				console.debug(`created object URL:`, modelUrl);
 			}
@@ -283,7 +286,7 @@ AFRAME.registerComponent('selectable-model', {
 			// 	value = 'url(' + value + ')';
 			// }
 			console.log(`selectable-model update GLTF src: “${modelUrl}”`)
-			this.clearPersistentMsg();
+			postMessage({kind: 'CLEAR_PERSISTENT_MSG'});
 			this.gltfEl.setAttribute('src', modelUrl);
 		} catch (err) {
 			console.log(`selectable-model update error:`, err);
@@ -312,7 +315,7 @@ AFRAME.registerComponent('selectable-model', {
 		const msg = format ?
 			`not a valid ${format?.toUpperCase?.()} file` :
 			`error while loading model: ` + JSON.stringify(evt.detail);
-		this.showPersistentMsg(msg);
+		postMessage({kind: 'PERSISTENT_MSG', msg});
 
 		const spinner = document.getElementById(SPINNER_ID);
 		spinner?.removeState(STATE_SPINNING);
@@ -456,64 +459,4 @@ AFRAME.registerComponent('selectable-model', {
 			spinner.remove();
 		}
 	},
-
-	showTransientMsg: function (msg) {
-		if (msg instanceof Error) {
-			msg = msg.message || msg.name || msg?.toString();
-		}
-
-		setTimeout( () => {
-			if (!this.transientDialog) {
-				this.transientDialog = document.createElement('dialog');
-				this.transientDialog.style.top = '1em';
-				this.transientDialog.style.right = '1em';
-				this.transientDialog.style.marginRight = '0';
-				this.transientDialog.style.left = '1em';
-				this.transientDialog.style.zIndex = '30';
-				document.body.appendChild(this.transientDialog);
-				const div = document.createElement('div');
-				this.transientDialog.appendChild(div);
-			}
-			const msgElmt = this.transientDialog.firstElementChild ?? this.transientDialog;
-			msgElmt.innerText = msg;
-			this.transientDialog.show();
-
-			setTimeout(this.transientDialog.close.bind(this.transientDialog),7000);
-		}, 100);
-	},
-
-	showPersistentMsg: function (msg) {
-		if (msg instanceof Error) {
-			msg = msg.message || msg.name || msg?.toString();
-		}
-
-		setTimeout( () => {
-			if (!this.persistentDialog) {
-				this.persistentDialog = document.createElement('dialog');
-				this.persistentDialog.style.top = '1em';
-				this.persistentDialog.style.right = '1em';
-				this.persistentDialog.style.marginRight = '0';
-				this.persistentDialog.style.left = '1em';
-				this.persistentDialog.style.zIndex = '20';
-				document.body.appendChild(this.persistentDialog);
-				const div = document.createElement('div');
-				this.persistentDialog.appendChild(div);
-				const form = document.createElement('form');
-				form.setAttribute('method', 'dialog');
-				this.persistentDialog.appendChild(form);
-				const button = document.createElement('button');
-				button.innerText = 'OK';
-				button.autofocus = true;
-				button.style.marginBlockStart = '1em';
-				form.appendChild(button);
-			}
-			const msgElmt = this.persistentDialog.firstElementChild ?? this.persistentDialog;
-			msgElmt.innerText = msg;
-			this.persistentDialog.show();
-		}, 100);
-	},
-
-	clearPersistentMsg: function () {
-		this.persistentDialog?.close();
-	}
 });

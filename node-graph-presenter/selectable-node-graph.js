@@ -135,14 +135,14 @@ AFRAME.registerComponent('selectable-node-graph', {
 		} else if (value?.length > 0) {
 			this.urlInput.value = '';
 			console.warn(`“${value}” is not a URL`);
-			this.showTransientMsg(`“${value}” is not a URL`);
+			postMessage({kind: 'TRANSIENT_MSG', msg: `“${value}” is not a URL`});
 		}
 	},
 
 	openGraphFile: function (evt) {
 		console.log(`openGraphFile`, evt.detail);
 		this.fileInpt.click();
-		this.clearPersistentMsg();
+		postMessage({kind: 'CLEAR_PERSISTENT_MSG'});
 	},
 
 	fileInptChange: async function (_evt) {
@@ -156,7 +156,7 @@ AFRAME.registerComponent('selectable-node-graph', {
 			await this.graphFileToUrl(this.fileInpt.files[0]);
 		} catch (err) {
 			console.error(`fileInptChange:`, err);
-			this.showPersistentMsg(err);
+			postMessage({kind: 'PERSISTENT_MSG', msg: err});
 		}
 	},
 
@@ -184,11 +184,11 @@ AFRAME.registerComponent('selectable-node-graph', {
 				evt.stopPropagation();
 				evt.preventDefault();
 				console.info(`Only a Noda .csv or SPDX .json file can be ${'paste' === evt.type ? "pasted" : "dropped"} here`);
-				this.showTransientMsg(`Only a Noda .csv or SPDX .json file can be ${'paste' === evt.type ? "pasted" : "dropped"} here`);
+				postMessage({kind: 'TRANSIENT_MSG', msg: `Only a Noda .csv or SPDX .json file can be ${'paste' === evt.type ? "pasted" : "dropped"} here`});
 			}
 		} catch (err) {
 			console.error(`drop:`, err);
-			this.showPersistentMsg(err);
+			postMessage({kind: 'PERSISTENT_MSG', msg: err});
 		}
 	},
 
@@ -203,17 +203,19 @@ AFRAME.registerComponent('selectable-node-graph', {
 				graphUrl = `croquet:` + file.type + ',' + croquetId;
 			} catch (err) {
 				console.error(`graphFileToUrl:`, err);
-				this.showPersistentMsg(err);
+				postMessage({kind: 'PERSISTENT_MSG', msg: err});
 			}
 		} else if (typeof dataIF?.store !== 'function') {
 			console.warn(`graphFileToUrl typeof dataIF?.store:`, typeof dataIF?.store, file.size);
-			this.showPersistentMsg(`The Multisynq API for syncing files has changed`);
+			postMessage({kind: 'PERSISTENT_MSG',
+				msg: `The Croquet API for syncing files has changed`});
 		}
 		if (!graphUrl) {
 			graphUrl = await fileToDataUrl(file);
 			if (graphUrl.length > 16384) {
 				console.warn(`${file.name} csvUrl.length ${graphUrl.length} > 16384`);
-				this.showPersistentMsg(`“${file.name}” is too big to sync to other users; upload it somewhere and paste the URL below`);
+				postMessage({kind: 'PERSISTENT_MSG',
+					msg: `“${file.name}” is too big to sync to other users; upload it somewhere and paste the URL below`});
 				graphUrl = URL.createObjectURL(file);
 				console.debug(`created object URL:`, graphUrl);
 			}
@@ -304,7 +306,7 @@ AFRAME.registerComponent('selectable-node-graph', {
 			}
 
 			console.log(`selectable-node-graph update graph src: "${graphUrl}"`);
-			this.clearPersistentMsg();
+			postMessage({kind: 'CLEAR_PERSISTENT_MSG'});
 
 			let contentType;
 			const url = URL.parse(graphUrl);
@@ -359,7 +361,7 @@ AFRAME.registerComponent('selectable-node-graph', {
 						this.el.emit('graph-loaded');
 					} catch (err) {
 						console.error(`selectable-node-graph update spread:`, err);
-						this.showTransientMsg("spread not adjusted");
+						postMessage({kind: 'TRANSIENT_MSG', msg: "spread not adjusted"});
 					}
 				}, 0);
 			} else if (contentType?.startsWith?.('application/json')) {
@@ -375,11 +377,11 @@ AFRAME.registerComponent('selectable-node-graph', {
 
 			console.log(`selectable-node-graph new elements:`, this.el.children);
 			if (errors?.length > 0 || warnings?.length > 0 || info?.length > 0) {
-				this.showTransientMsg([...errors, ...warnings, ...info].join('\n'));
+				postMessage({kind: 'TRANSIENT_MSG', msg: [...errors, ...warnings, ...info].join('\n')});
 			}
 		} catch (err) {
 			console.error(`selectable-node-graph update error:`, err);
-			this.showPersistentMsg(err);
+			postMessage({kind: 'PERSISTENT_MSG', msg: err});
 		} finally {
 			// presumes URL content has been completely read
 			URL.revokeObjectURL(graphUrl); // ok if not ObjectURL
@@ -456,14 +458,14 @@ AFRAME.registerComponent('selectable-node-graph', {
 						this.el.emit('graph-loaded');
 					} catch (err) {
 						console.error(`selectable-node-graph update spread:`, err);
-						this.showTransientMsg("spread not adjusted");
+						postMessage({kind: 'TRANSIENT_MSG', msg: "spread not adjusted"});
 					}
 			}
 		};
 
 		worker.onerror = errEvent => {
 			console.error(`forceGraphWorker error “${errEvent.message}” ${errEvent.filename} line ${errEvent.lineno} column ${errEvent.colno}`);
-			this.showTransientMsg(`error arranging nodes`);
+			postMessage({kind: 'TRANSIENT_MSG', msg: `error arranging nodes`});
 		}
 	},
 
@@ -683,64 +685,4 @@ AFRAME.registerComponent('selectable-node-graph', {
 			spinner.remove();
 		}
 	},
-
-	showTransientMsg: function (msg) {
-		if (msg instanceof Error) {
-			msg = msg.message || msg.name || msg?.toString();
-		}
-
-		setTimeout( () => {
-			if (!this.transientDialog) {
-				this.transientDialog = document.createElement('dialog');
-				this.transientDialog.style.top = '1em';
-				this.transientDialog.style.right = '1em';
-				this.transientDialog.style.marginRight = '0';
-				this.transientDialog.style.left = '1em';
-				this.transientDialog.style.zIndex = '30';
-				document.body.appendChild(this.transientDialog);
-				const div = document.createElement('div');
-				this.transientDialog.appendChild(div);
-			}
-			const msgElmt = this.transientDialog.firstElementChild ?? this.transientDialog;
-			msgElmt.innerText = msg;
-			this.transientDialog.show();
-
-			setTimeout(this.transientDialog.close.bind(this.transientDialog),7000);
-		}, 100);
-	},
-
-	showPersistentMsg: function (msg) {
-		if (msg instanceof Error) {
-			msg = msg.message || msg.name || msg?.toString();
-		}
-
-		setTimeout( () => {
-			if (!this.persistentDialog) {
-				this.persistentDialog = document.createElement('dialog');
-				this.persistentDialog.style.top = '1em';
-				this.persistentDialog.style.right = '1em';
-				this.persistentDialog.style.marginRight = '0';
-				this.persistentDialog.style.left = '1em';
-				this.persistentDialog.style.zIndex = '20';
-				document.body.appendChild(this.persistentDialog);
-				const div = document.createElement('div');
-				this.persistentDialog.appendChild(div);
-				const form = document.createElement('form');
-				form.setAttribute('method', 'dialog');
-				this.persistentDialog.appendChild(form);
-				const button = document.createElement('button');
-				button.innerText = 'OK';
-				button.autofocus = true;
-				button.style.marginBlockStart = '1em';
-				form.appendChild(button);
-			}
-			const msgElmt = this.persistentDialog.firstElementChild ?? this.persistentDialog;
-			msgElmt.innerText = msg;
-			this.persistentDialog.show();
-		}, 100);
-	},
-
-	clearPersistentMsg: function () {
-		this.persistentDialog?.close();
-	}
 });
