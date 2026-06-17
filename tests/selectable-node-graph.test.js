@@ -27,7 +27,6 @@ describe('selectable-node-graph component', function() {
     it('should initialize with default properties and create UI elements', function() {
         const component = el.components['selectable-node-graph'];
         expect(component).to.exist;
-        expect(component.data.flavorCsv).to.equal('NODA');
         expect(component.data.spreadHoriz).to.equal(1);
         expect(component.data.spreadVert).to.equal(1);
 
@@ -38,13 +37,15 @@ describe('selectable-node-graph component', function() {
         expect(component.fileInpt.parentNode).to.equal(document.body);
     });
 
-    it('should load nodes when src is updated', async function() {
+    it('should load nodes when URL input changes', async function() {
         const csvData = 'Uuid,Title,PositionX,PositionY,PositionZ,Color,Size,Shape,Collapsed\n' +
                         'node1,Test Node,11,22,33,ff0000,5,Ball,No';
         const blob = new Blob([csvData], { type: 'text/csv' });
         blobUrl = URL.createObjectURL(blob);
 
-        el.setAttribute('selectable-node-graph', 'src', blobUrl);
+        const component = el.components['selectable-node-graph'];
+        component.urlInput.value = blobUrl;
+        component.openUrl();
 
         // waits for the async update to complete
         await new Promise(resolve => {
@@ -78,7 +79,9 @@ describe('selectable-node-graph component', function() {
         const blob = new Blob([csvData], { type: 'text/csv' });
         blobUrl = URL.createObjectURL(blob);
 
-        el.setAttribute('selectable-node-graph', 'src', blobUrl);
+        const component = el.components['selectable-node-graph'];
+        component.urlInput.value = blobUrl;
+        component.openUrl();
 
         // waits for the async update to complete
         await new Promise(resolve => {
@@ -111,7 +114,9 @@ describe('selectable-node-graph component', function() {
         const blob = new Blob([csvData], { type: 'text/csv' });
         blobUrl = URL.createObjectURL(blob);
 
-        el.setAttribute('selectable-node-graph', 'src', blobUrl);
+        const component = el.components['selectable-node-graph'];
+        component.urlInput.value = blobUrl;
+        component.openUrl();
 
         // waits for the async update to complete
         await new Promise(resolve => {
@@ -145,21 +150,6 @@ describe('selectable-node-graph component', function() {
         expect(el.object3D.position.x).to.be.closeTo((6+(-2))/2 * -attr.spreadHoriz, 0.002);
         expect(el.object3D.position.y).to.equal((0.1+(-0.2))/2 * -attr.spreadVert + 1.25);
         expect(el.object3D.position.z).to.be.closeTo((8+(-4))/2 * -attr.spreadHoriz, 0.002);
-    });
-
-    it('should handle URL input change', function() {
-        const csvData = 'Uuid,Title,PositionX,PositionY,PositionZ,Color,Size,Shape,Collapsed\n' +
-            'urlChangeNode,URL Change Node,42,69,21,a0a0a0,7,Tetra,No';
-        var dataUrl = "data:text/csv;base64," + btoa(csvData);
-
-        const component = el.components['selectable-node-graph'];
-        const urlInput = component.urlInput;
-        urlInput.value = dataUrl;
-
-        // Mocking openUrl behavior since it's triggered by event
-        component.openUrl();
-
-        expect(el.getAttribute('selectable-node-graph').src).to.equal(dataUrl);
     });
 
     it('should handle file input change', async function() {
@@ -212,7 +202,9 @@ describe('selectable-node-graph component', function() {
         const blob = new Blob([csvData], { type: 'text/csv' });
         blobUrl = URL.createObjectURL(blob);
 
-        el.setAttribute('selectable-node-graph', 'src', blobUrl);
+        const component = el.components['selectable-node-graph'];
+        component.urlInput.value = blobUrl;
+        component.openUrl();
 
         await new Promise(resolve => {
             const handleLoaded = () => {
@@ -266,7 +258,9 @@ describe('selectable-node-graph component', function() {
         const blob = new Blob([csvData], { type: 'text/csv' });
         blobUrl = URL.createObjectURL(blob);
 
-        el.setAttribute('selectable-node-graph', 'src', blobUrl);
+        const component = el.components['selectable-node-graph'];
+        component.urlInput.value = blobUrl;
+        component.openUrl();
 
         await new Promise(resolve => {
             const handleLoaded = () => {

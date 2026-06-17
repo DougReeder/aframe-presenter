@@ -4,8 +4,9 @@
   "description": "present an A-Frame scene to a group using the Multisync network",
   "main": "index.js",
   "scripts": {
-    "test": "node run-tests.js",
-    "test:debug": "node run-tests.js --debug",
+    "test-classic": "node run-tests.js",
+    "test-classic:debug": "node run-tests.js --debug",
+    "vitest-modules:browser": "vitest --config=vite.config.js",
     "build": "vite build",
     "assemble": "mkdir -p dist; cp -pr index.html src data-presenter node-graph-presenter model-presenter assets dist/",
     "presurge": "npm run build && npm run assemble",
@@ -27,6 +28,7 @@
   "author": "Doug Reeder",
   "license": "ISC",
   "devDependencies": {
+    "@vitest/browser-playwright": "^4.1.9",
     "chai": "6.2.2",
     "http-server": "14.1.1",
     "mocha": "11.7.6",
@@ -35,6 +37,7 @@
     "vite": "^8.0.16"
   },
   "dependencies": {
-    "d3-force-3d": "3.0.6"
+    "d3-force-3d": "3.0.6",
+    "papaparse": "^5.5.3"
   }
 }

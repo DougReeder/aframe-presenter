@@ -1,187 +1,140 @@
-// jsonToNodes.js — converts SPDX JSON data to Three.js objects
+// jsonToNodes.js — converts SPDX JSON data to d3-force-3d nodes and links
 // Copyright © 2026 by Doug Reeder under the MIT License
 
-async function jsonToNodes(url, graphEl) {
-  console.debug('jsonToNodes: url = ' + url);
-  let lastYield = Date.now();
+import {cssSafeId} from "./workerUtil";
 
+const spdxPrefix = /^SPDXRef-(?:([PpFfSs])(ackage|ile|nippet)-)?(npm-|apk-|github(?:actions)?-|maven-|gem-|pypi-|docker-|golang-|composer-)?/;
+function usableId(spdxId) {
+  return cssSafeId((spdxId ?? '').replace(spdxPrefix,'$1-'));
+}
+
+export async function jsonToNodes(file, url) {
+  console.debug(`jsonToNodes file: ${file} url: ${url}`);
+  const nodeMap = new Map();
+  const links = [];
   const errors = [];
   const warnings = [];
   const info = [];
-
-  const response = await fetch(url);
-  if (!response.ok) {
-    errors.push(`failed to fetch JSON: ${response.status} ${response.statusText}`);
-    return {errors, warnings, info};
-  }
-
   let json;
-  try {
+
+  if (file) {
+    const text = await file.text();
+    json = JSON.parse(text);
+  } else if (url) {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`failed to fetch JSON: ${response.status} ${response.statusText}`);
+    }
     json = await response.json();
-  } catch (err) {
-    errors.push(`failed to parse JSON: ${err.message}`);
-    return {errors, warnings, info};
+  } else {
+    throw new Error('no file nor URL provided');
   }
   console.debug('json:', json);
 
-  for (const child of Array.from(graphEl.children)) {
-    child.remove();
-  }
-  const graph = graphEl.object3D;
-  graph.name = 'graph';
-  disposeTree(graph);
-
-  let numObj = 0, numNodes = 0, numEdges = 0;
-  const elMap = new Map();
+  let numBadRelationships = 0;
   let rootId = null;
   for (const file of json?.files ?? []) {
-    if (Date.now() - lastYield > YIELD_DEADLINE) {
-      await yield();
-      lastYield = Date.now();
+    const node = mapSpdxFile(file);
+
+    if (nodeMap.has(node.id)) {
+      warnings.push(`file ${node.title} duplicates ID "${node.id}"`);
     }
-
-    let {id, title, notes, imageUrl, linkUrl, color, opacity, primitive, details, collapsed, position, size} = mapSpdxFile(file);
-
-    createNodeEl(id, title, notes, imageUrl, linkUrl, color, opacity, primitive, details, collapsed, position, size, false);
+    // Node IDs _should be_ unique, but if not, refer to the _most recently_ defined node with the given ID
+    nodeMap.set(node.id, node);
   }
   for (const pkg of json?.packages ?? []) {
-    if (Date.now() - lastYield > YIELD_DEADLINE) {
-      await yield();
-      lastYield = Date.now();
+    const node = mapSpdxPackage(pkg);
+
+    if (nodeMap.has(node.id)) {
+      warnings.push(`package ${node.title} duplicates ID "${node.id}"`);
     }
-
-    let {id, title, notes, imageUrl, linkUrl, color, opacity, primitive, details, collapsed, position, size} = mapSpdxPackage(pkg);
-
-    createNodeEl(id, title, notes, imageUrl, linkUrl, color, opacity, primitive, details, collapsed, position, size, true);
+    // Node IDs _should be_ unique, but if not, refer to the _most recently_ defined node with the given ID
+    nodeMap.set(node.id, node);
   }
 
-  // moves the main package to the center of the graph
+  // starts the main package at the center of the graph
   const documentDescribes = (json?.relationships ?? []).find(r => r.relationshipType === "DESCRIBES" && r.spdxElementId === "SPDXRef-DOCUMENT");
   if (documentDescribes) {
-    const mainPkgEl = elMap.get(documentDescribes.relatedSpdxElement);
-    if (mainPkgEl) {
-      mainPkgEl.setAttribute('graph-node', {naturalPosition: {x: 0, y: 1, z: 0}});
-      mainPkgEl.object3D?.position?.set(0, 1, 0);
-      mainPkgEl.object3D?.scale?.set(2, 2, 2);
+    const mainId = usableId(documentDescribes.relatedSpdxElement);
+    const mainPkgNode = nodeMap.get(mainId);
+    if (mainPkgNode) {
+      mainPkgNode.x = 0;
+      mainPkgNode.y = 0;
+      mainPkgNode.z = 0;
+      // TODO: set the scale to 2,2,2; but how?
     } else {
-      warnings.push(`can't find package described by document: "${documentDescribes.relatedSpdxElement}"`);
+      warnings.push(`can't find package described by document: "${mainId}"`);
     }
   }
 
-  const edges = [];
   for (const relationship of json?.relationships ?? []) {
-    if (Date.now() - lastYield > YIELD_DEADLINE) {
-      await yield();
-      lastYield = Date.now();
-    }
-
-    ++numObj;
-    let {action, title, color, fromId, toId, preferredLength, visible} = mapSpdxRelationship(relationship);
+    let {action, link} = mapSpdxRelationship(relationship);
 
     if ('ROOT_ID' === action) {
-      rootId = title;
+      rootId = link.title;
+      continue;
+    } else if ('BAD' === action) {
+      ++numBadRelationships;
       continue;
     }
 
-    const start = elMap.get(fromId)?.object3D?.position;
-    if (!start) {
-      console.warn(`can't find “from” node for edge “${title}”`);
-      warnings.push(`can't find “from” node for edge “${title}”`);
-      continue;
-    }
-    const end = elMap.get(toId)?.object3D?.position;
-    if (!end) {
-      console.warn(`can't find “to” node for edge “${title}”`);
-      warnings.push(`can't find “to” node for edge “${title}”`);
-      continue;
-    }
-    const edgeEl = document.createElement('a-entity');
-    edgeEl.setAttribute('graph-edge', {
-      title,
-      color,
-      fromId, start,
-      toId, end,
-      preferredLength,
-    });
-    edgeEl.setAttribute('visible', visible);
-    graphEl.appendChild(edgeEl);
-    edges.push(edgeEl);
-    ++numEdges;
+    links.push(link);
   }
 
   // TODO: should we just calculate based on the number of child nodes?
-  for (const edge of edges) {
-    if (edge.components['graph-edge']?.data?.fromId === rootId) {
-      edge.setAttribute('graph-edge', {preferredLength: 0.60});
+  for (const link of links) {
+    if (link.source.id === rootId) {
+      link.preferredLength = 0.60;
     }
   }
 
-  info.push(`Parsed ${numObj} objects; added ${numNodes} nodes and ${numEdges} edges`);
+  let msg = `Created ${nodeMap.size} nodes and ${links.length} edges`;
+  if (numBadRelationships) { msg += `; ignored ${numBadRelationships} bad edges`;}
+  info.push(msg);
 
-  console.debug("nodes & edges:", graph.children);
-  return {errors, warnings, info};
-
-  function createNodeEl(id, title, notes, imageUrl, linkUrl, color, opacity, primitive, details, collapsed, position, size, visible = true) {
-    ++numObj;
-
-    // edges refer to the _most recently_ defined node with the given ID
-    if (elMap.has(id)) {
-      warnings.push(`duplicate node ID "${id}"`);
-    }
-    if (id === null || id === undefined || id === '') {
-      id = '' + Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
-      info.push(`node “${title || notes}” has no ID, assigning ${id}`);
-    }
-
-    const el = document.createElement('a-entity');
-    el.setAttribute('id', id);
-    elMap.set(id, el);
-
-    if (!Number.isFinite(position.x)) { position.x = Math.random() * 2 - 1; }
-    position.y ||= 0;
-    if (!Number.isFinite(position.z)) { position.z = Math.random() * 2 - 1; }
-
-    el.setAttribute('graph-node', {id, title, notes, imageUrl, linkUrl, color, opacity, primitive, size, details, collapsed, naturalPosition: position});
-    el.object3D.position.copy(position);
-    // el.setAttribute('rotation', '0 45 0');
-    // el.object3D.scale.set(size, size, size);
-    el.setAttribute('visible', visible);
-    el.object3D.visible = visible;
-    el.object3D.userData.id = id;
-    if (visible) { el.classList.add(PRESENTATION_CLASS); }
-    graphEl.appendChild(el);
-
-    ++numNodes;
-  }
+  return {nodes: Array.from(nodeMap.values()), links, errors, warnings, info};
 
   function mapSpdxRelationship(relationship) {
+    const fromId = usableId(relationship.spdxElementId);
+    const toId = usableId(relationship.relatedSpdxElement);
+    const id = fromId + '_' + (relationship.relationshipType ?? '').slice(0,3) + '_' + toId;
+
     let title;
     if ([].includes(relationship.relationshipType)) {   // TODO: where is a titled edge useful?
       title = relationship.relationshipType;
     }
 
     if (relationship.spdxElementId === "SPDXRef-DOCUMENT" && relationship.relationshipType === "DESCRIBES") {
-      return {action: 'ROOT_ID', title: relationship.relatedSpdxElement};
+      return {action: 'ROOT_ID', link: {title: usableId(relationship.relatedSpdxElement)}};
     }
 
     const color = RELATIONSHIP_TO_COLOR[relationship.relationshipType] || '#808080';
 
-    const fromId = relationship.spdxElementId;
-    const fromEl = elMap.get(fromId);
-    const fromVisible = fromEl?.getAttribute('visible');
-    const fromCount = fromEl?.components['graph-node']?.data?.numChildren || 0;
-    fromEl?.setAttribute('graph-node', {numChildren: fromCount + 1});
+    const sourceId = usableId(relationship.spdxElementId);
+    const targetId = usableId(relationship.relatedSpdxElement);
+    const target = nodeMap.get(targetId);
+    if (!target) {
+      warnings.push(`can't find “to” node for edge ${title || sourceId + ' ' + relationship.relationshipType + ' ' + targetId}`);
+      return {action: 'BAD'};
+    }
+    const targetVisible = target.visible;
 
-    const toId = relationship.relatedSpdxElement;
-    const toVisible = elMap.get(toId)?.getAttribute('visible');
-    const toData = elMap.get(toId)?.components['graph-node']?.data;
+    const source = nodeMap.get(sourceId);
+    if (!source) {
+      warnings.push(`can't find “from” node for edge ${title || sourceId + ' ' + relationship.relationshipType + ' ' + targetId}`);
+      return {action: 'BAD'};
+    }
+    const sourceVisible = source.visible;
+    // This makes the function impure, but is there a better way?
+    const sourceCount = source.numChildren || 0;
+    source.numChildren = sourceCount + 1;
 
     // files should be closer to their packages
     // TODO: It's fragile to depend on the primitive type, but it's confined to this source file.
-    const isContainsFile = relationship.relationshipType === 'CONTAINS' && toData?.primitive === 'octahedron';
+    const isContainsFile = relationship.relationshipType === 'CONTAINS' && target?.primitive === 'octahedron';
     const preferredLength = isContainsFile ? 0.08 : 0.30;
 
-    return {action: 'EDGE', title, color, fromId, toId, preferredLength, visible: fromVisible && toVisible};
+    return {action: 'EDGE', link: {id, title, color, source, target, preferredLength, visible: sourceVisible && targetVisible}};
   }
 }
 
@@ -242,7 +195,7 @@ const PKGMGR_TO_PRIMITIVE = {
 };
 
 function mapSpdxFile(file) {
-  const id = file.SPDXID;
+  const id = usableId(file.SPDXID);
 
   const title = file.fileName;
 
@@ -291,15 +244,19 @@ function mapSpdxFile(file) {
 
   const collapsed = false;
 
-  const position = new THREE.Vector3(NaN, NaN, NaN);
+  const x = NaN;
+  const y = NaN;
+  const z = NaN;
 
   const size = 0.05;   // we could encode something as size
 
-  return {id, title, notes, imageUrl, linkUrl, color, opacity, primitive, details, collapsed, position, size};
+  const visible = false;
+
+  return {id, title, notes, imageUrl, linkUrl, color, opacity, primitive, details, collapsed, x, y, z, size, visible};
 }
 
 function mapSpdxPackage(pkg) {
-  const id = pkg.SPDXID;
+  const id = usableId(pkg.SPDXID);
 
   const title = pkg.name;
 
@@ -360,11 +317,17 @@ function mapSpdxPackage(pkg) {
 
   const collapsed = false;
 
-  const position = new THREE.Vector3(NaN, NaN, NaN);
+  const x = NaN;
+  const y = NaN;
+  const z = NaN;
 
   const size = 0.05;   // we could encode something as size
 
-  return {id, title, notes, imageUrl, linkUrl, color, opacity, primitive, details, collapsed, position, size};
+  const numChildren = 0;
+
+  const visible = true;
+
+  return {id, title, notes, imageUrl, linkUrl, color, opacity, primitive, details, collapsed, x, y, z, size, numChildren, visible};
 }
 
 const RELATIONSHIP_TO_COLOR = {

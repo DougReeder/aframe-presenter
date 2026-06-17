@@ -3,7 +3,7 @@
 
 AFRAME.registerComponent('graph-edge', {
   schema: {
-    // id: {default: ''},
+    id: {default: ''},
     title: {default: ''},
     color: {type: 'color'},
     opacity: {default: 1.0},
@@ -19,8 +19,7 @@ AFRAME.registerComponent('graph-edge', {
 
   init: function () {
     // console.debug(`graph-edge init `, this.data);
-
-    // this.el.setAttribute('id', this.data.id);
+    this.el.setAttribute('id', this.data.id);
     this.el.setAttribute('line', {start: this.data.start, end: this.data.end, color: this.data.color, opacity: this.data.opacity});
     this.setEdgeTitle(this.data.title, this.data.start, this.data.end);
   },

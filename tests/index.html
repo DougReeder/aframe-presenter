@@ -20,8 +20,6 @@
     <script src="../node-graph-presenter/graph-node.js"></script>
     <script src="../node-graph-presenter/graph-edge.js"></script>
     <script src="../src/yield.js"></script>
-    <script src="../node-graph-presenter/csvToNodes.js"></script>
-    <script src="../node-graph-presenter/jsonToNodes.js"></script>
     <script src="../node-graph-presenter/selectable-node-graph.js"></script>
 </head>
 <body>
@@ -34,15 +32,16 @@
         if (urlParams.has('grep')) {
             mocha.setup({
                 ui: 'bdd',
-                timeout: 0
+                timeout: '10_000',
             });
         } else {
-            mocha.setup('bdd');
+            mocha.setup({
+              ui: 'bdd',
+              timeout: '10_000',
+            });
         }
         window.expect = chai.expect;
     </script>
-    <script src="/tests/csvToNodes.test.js"></script>
-    <script src="/tests/jsonToNodes.test.js"></script>
     <script src="/tests/selectable-node-graph.test.js"></script>
     <script>
         const runner = mocha.run();

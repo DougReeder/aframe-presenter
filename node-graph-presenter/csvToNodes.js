@@ -1,28 +1,23 @@
-// csvToNodes.js — converts Noda .CSV data to Three.js objects
+// csvToNodes.js — converts Noda .CSV data to d3-force-3d nodes and links
 // Copyright © 2026 by Doug Reeder under the MIT License
 
-async function csvToNodes(url, flavorCsv, graphEl) {
-  console.debug('csvToNodes: url = ' + url);
-  let lastYield = Date.now();
+import Papa from 'papaparse';
+import {cssSafeId, threeJsColor} from "./workerUtil";
 
-  for (const child of Array.from(graphEl.children)) {
-    child.remove();
-  }
-  const graph = graphEl.object3D;
-  graph.name = 'graph';
-  disposeTree(graph);
+export async function csvToNodes(fileOrUrl) {
+  console.debug('csvToNodes: fileOrUrl = ' + fileOrUrl);
 
+  const nodeMap = new Map();
+  const links = [];
   const errors = [];
   const warnings = [];
   const info = [];
-  const elMap = new Map();
 
   await new Promise((resolve, reject) => {
-    Papa.parse(url, {
+    Papa.parse(fileOrUrl, {
       download: true,
       header: true,
       // dynamicTyping: {PositionX: true, PositionY: true, PositionZ: true, Opacity: true, Size: true},
-      worker: true,
       skipEmptyLines: 'greedy',
       complete: async function(result) {
         if (!result || typeof result !== "object" ) {
@@ -38,72 +33,49 @@ async function csvToNodes(url, flavorCsv, graphEl) {
         }
         console.log('Papa Parse result:', result);
 
-        let numNodes = 0, numEdges = 0;
         for (let row of data) {
-          if (Date.now() - lastYield > YIELD_DEADLINE) {
-            await yield();
-            lastYield = Date.now();
-          }
-
-          let id, title, notes, imageUrl, linkUrl, color, opacity, primitive, collapsed, position, size, fromId, toId;
-          switch (flavorCsv) {   // the flavorCsv determines what fields of row to read
-            case 'NODA':
-              ({id, title, notes, imageUrl, linkUrl, color, opacity, primitive, collapsed, position, size, fromId, toId} = mapNodaValues(row));
-              break;
-          }
-          if (!Number.isNaN(position.x) || !Number.isNaN(position.y) || !Number.isNaN(position.z)) {   // node
+          let id, title, notes, imageUrl, linkUrl, color, opacity, primitive, collapsed, x, y, z, size, fromId, toId;
+          // switch (flavorCsv) {   // the flavorCsv determines what fields of row to read
+          //   case 'NODA':
+              ({id, title, notes, imageUrl, linkUrl, color, opacity, primitive, collapsed, x, y, z, size, fromId, toId} = mapNodaValues(row));
+          //     break;
+          // }
+          if (Number.isFinite(x) || Number.isFinite(y) || Number.isFinite(z)) {   // node
             if (!id) {
               info.push(`node “${title || notes}” has no ID`);
             }
-            position.x ||= 0;
-            position.y ||= 0;
-            position.z ||= 0;
+            x ??= Math.random() * 2 - 1;
+            y ??= Math.random() * 2;
+            z ??= Math.random() * 2 - 1
 
-            const el = document.createElement('a-entity');
-            el.setAttribute('id', id);
-            el.setAttribute('graph-node', {id, title, notes, imageUrl, linkUrl, color, opacity, primitive, size, collapsed, naturalPosition: position});
-            el.object3D.position.copy(position);
-            el.object3D.userData.id = id;
-            el.classList.add(PRESENTATION_CLASS);
-            graphEl.appendChild(el);
+            const node = {id, title, notes, imageUrl, linkUrl, color, opacity, primitive, size, collapsed, x, y, z, visible: true};
 
-            if (elMap.has(id)) {
+            if (nodeMap.has(id)) {
               warnings.push(`duplicate node ID "${id}"`);
             }
-            // edges refer to the _most recently_ defined node with the given ID
-            elMap.set(id, el);
-            ++numNodes;
+            // links _should be_ unique, but if not, refer to the _most recently_ defined node with the given ID
+            nodeMap.set(id, node);
           } else if (fromId || toId) {   // edge
-            const start = elMap.get(fromId)?.object3D?.position;
-            if (!start) {
+            const source = nodeMap.get(fromId)
+            if (!source) {
               console.warn(`can't find “from” node for edge “${title || notes || id}”`);
               warnings.push(`can't find “from” node for edge “${title || notes || id}”`);
               continue;
             }
-            const end = elMap.get(toId)?.object3D?.position;
-            if (!end) {
+            source.numChildren = (source.numChildren || 0) + 1;
+            const target = nodeMap.get(toId);
+            if (!target) {
               console.warn(`can't find “to” node for edge “${title || notes || id}”`);
               warnings.push(`can't find “to” node for edge “${title || notes || id}”`);
               continue;
             }
-            const edgeEl = document.createElement('a-entity');
-            if (id) {
-              edgeEl.setAttribute('id', id);
-              edgeEl.object3D.userData.id = id;
-            }
-            edgeEl.setAttribute('graph-edge', {
-              title, color, opacity,
-              fromId, start,
-              toId, end
-            });
-            graphEl.appendChild(edgeEl);
-            ++numEdges;
+            links.push({id, title, color, opacity, source, target});
           } else {
             console.warn(`unknown thing “${title || notes?.slice(0, 20) || primitive || imageUrl}”`);
             warnings.push(`unknown thing “${title || notes?.slice(0, 20) || primitive || imageUrl}”`);
           }
         }
-        info.push(`Parsed ${data.length} rows; added ${numNodes} nodes and ${numEdges} edges`);
+        info.push(`Parsed ${data.length} rows; added ${nodeMap.size} nodes and ${links.length} edges`);
         for (let error of parseErrors) {
           switch (error.code) {
             case 'TooManyFields':
@@ -116,22 +88,21 @@ async function csvToNodes(url, flavorCsv, graphEl) {
         resolve();
       },
       error: function(err, file) {
-        if (url?.startsWith('data:') && (!err.message || /network/i.test(err.message))) {
-          console.log('Papa Parse file error:', err, file, url);
+        if (fileOrUrl?.startsWith?.('data:') && (!err.message || /network/i.test(err.message))) {
+          console.log('Papa Parse file error:', err, file, fileOrUrl);
         } else {
-          console.error('Papa Parse file error:', err, file, url);
+          console.error('Papa Parse file error:', err, file, fileOrUrl);
           reject(err);
         }
       }
     });
   });
 
-  console.debug("nodes:", graph.children);
-  return {errors, warnings, info};
+  return {nodes: Array.from(nodeMap.values()), links, errors, warnings, info};
 }
 
 function mapNodaValues(row) {
-  const id = row.Uuid;
+  const id = cssSafeId(row.Uuid);
 
   const title = row.Title;
 
@@ -177,20 +148,22 @@ function mapNodaValues(row) {
 
   const collapsed = ['yes','y','true','t','1'].includes(row.Collapsed?.toLowerCase());
 
-  const position = new THREE.Vector3(parseNumber(row.PositionX), parseNumber(row.PositionY), parseNumber(row.PositionZ));
+  const x = parseNumber(row.PositionX);
+  const y = parseNumber(row.PositionY);
+  const z = parseNumber(row.PositionZ);
 
   const size = parseFloat(row.Size || "5") / 100;
 
-  const fromId = row.FromUuid;
-  const toId = row.ToUuid;
+  const fromId = cssSafeId(row.FromUuid);
+  const toId = cssSafeId(row.ToUuid);
 
-  return {id, title, notes, imageUrl, linkUrl, color, opacity, primitive, collapsed, position, size, fromId, toId};
+  return {id, title, notes, imageUrl, linkUrl, color, opacity, primitive, collapsed, x, y, z, size, fromId, toId};
 }
 
 function parseNumber(value) {
   if (typeof value === 'string') {
     value = value.trim();
-    if (/-?\d+,\d+/.test(value)) {   // single comma => European format
+    if (/-?\d+,\d+/.test(value)) {   // single internal comma => European format
       return parseFloat(value.replaceAll('.', '', 'g').replace(',', '.') || "0");
     } else {
       return parseFloat(value);
