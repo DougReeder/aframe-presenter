@@ -6,8 +6,9 @@
   "scripts": {
     "test": "node run-tests.js",
     "test:debug": "node run-tests.js --debug",
+    "build": "vite build",
     "assemble": "mkdir -p dist; cp -pr index.html src data-presenter node-graph-presenter model-presenter assets dist/",
-    "presurge": "npm run assemble",
+    "presurge": "npm run build && npm run assemble",
     "surge": "surge dist https://group-viewer.surge.sh",
     "old": "rsync -rtm --delete index.html src data-presenter node-graph-presenter model-presenter assets root@mail.hominidsoftware.com:/var/www/beta/",
     "preprod": "npm run assemble",
@@ -30,6 +31,10 @@
     "http-server": "14.1.1",
     "mocha": "11.7.6",
     "playwright": "1.60.0",
-    "serve-handler": "6.1.7"
+    "serve-handler": "6.1.7",
+    "vite": "^8.0.16"
+  },
+  "dependencies": {
+    "d3-force-3d": "3.0.6"
   }
 }

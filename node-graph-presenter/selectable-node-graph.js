@@ -390,7 +390,8 @@ AFRAME.registerComponent('selectable-node-graph', {
 	},
 
 	arrangeNodes: function () {
-		const worker = new Worker("forceGraphWorker.js");
+		const worker = new Worker("build/graphWorker.js",
+				{type: 'module', name: "graphWorker"});
 		const simNodes = [], simLinks = [];
 		for (const el of this.el.children) {
 			const data = el.components['graph-node']?.data;
@@ -422,7 +423,7 @@ AFRAME.registerComponent('selectable-node-graph', {
 		});
 
 		worker.onmessage = event => {
-			switch (event.data.type) {
+			switch (event.data.kind) {
 				case 'UPDATE':
 					console.debug(`arrangeNodes UPDATE:`, event.data);
 					for (const node of event.data.nodes) {
@@ -460,6 +461,8 @@ AFRAME.registerComponent('selectable-node-graph', {
 						console.error(`selectable-node-graph update spread:`, err);
 						postMessage({kind: 'TRANSIENT_MSG', msg: "spread not adjusted"});
 					}
+				default:   // transient and persistent user messages
+					postMessage(event.data);
 			}
 		};
 
