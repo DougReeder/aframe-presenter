@@ -238,6 +238,9 @@ AFRAME.registerComponent('selectable-node-graph', {
 			removeAllChildren(this.el).catch(console.error);
 
 			this.graphWorker.postMessage({url: url.href});
+
+			const baseName = url.href?.split('/')?.at(-1)?.split('.').slice(0, -1).join('.');
+			document.title = baseName ? baseName + " • Node Graph Presenter" : "Node Graph Presenter";
 		} else if (value?.length > 0) {
 			this.urlInput.value = '';
 			console.warn(`“${value}” is not a URL`);
@@ -261,6 +264,9 @@ AFRAME.registerComponent('selectable-node-graph', {
 			removeAllChildren(this.el).catch(console.error);
 
 			this.graphWorker.postMessage({files: this.fileInpt.files});
+
+			const baseName = this.fileInpt.files[0]?.name?.split('.').slice(0, -1).join('.');
+			document.title = baseName ? baseName + " • Node Graph Presenter" : "Node Graph Presenter";
 		} catch (err) {
 			console.error(`fileInptChange:`, err);
 			postMessage({kind: 'PERSISTENT_MSG', msg: err});
@@ -282,7 +288,10 @@ AFRAME.registerComponent('selectable-node-graph', {
 					postMessage({kind: 'CLEAR_PERSISTENT_MSG'});
 					removeAllChildren(this.el).catch(console.error);
 
-					this.graphWorker.postMessage({files});
+					this.graphWorker.postMessage({files: [files[i]]});
+
+					const baseName = files[i]?.name?.split('.').slice(0, -1).join('.');
+					document.title = baseName ? baseName + " • Node Graph Presenter" : "Node Graph Presenter";
 					return;
 				} else {
 					++i;
