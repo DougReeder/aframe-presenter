@@ -474,7 +474,7 @@ AFRAME.registerComponent('selectable-node-graph', {
 			for (const descendantNodeId of descendantNodeIds) {
 				if (descendantNodeId === toggledNodeId) { continue; }
 				if (Date.now() - lastYield > YIELD_DEADLINE) {
-					await yield();
+					await schedulerYield();
 					lastYield = Date.now();
 				}
 				this.addDescendantNodeIds(descendantNodeId, descendantNodeIds);
@@ -482,7 +482,7 @@ AFRAME.registerComponent('selectable-node-graph', {
 			for (const descendantNodeId of descendantNodeIds) {
 				if (descendantNodeId === toggledNodeId) { continue; }
 				if (Date.now() - lastYield > YIELD_DEADLINE) {
-					await yield();
+					await schedulerYield();
 					lastYield = Date.now();
 				}
 				if (this.allParentsHidden(descendantNodeId, descendantNodeIds)) {
