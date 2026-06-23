@@ -126,7 +126,7 @@ AFRAME.registerComponent('selectable-node-graph', {
 		this.graphWorker.onmessage = event => {
 			switch (event.data.kind) {
 				case 'RESET':
-					// removeAllChildren(this.el).catch(console.error);
+					this.el.setAttribute('selectable-node-graph', {spreadHoriz: 1.0, spreadVert: 1.0});
 					break;
 				case 'UPDATE':   // upserts nodes and edges
 					console.debug(`UPDATE:`, event.data);
