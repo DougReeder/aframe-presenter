@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="JavaScriptLibraryMappings">
-    <file url="PROJECT" libraries="{@croquet/croquet, aframe, aframe-croquet-component, aframe-extras.controls, aframe-extras.loaders, aframe-orbit-controls, chai, mocha, papaparse}" />
+    <file url="PROJECT" libraries="{@croquet/croquet, @multisynq/client, aframe, aframe-croquet-component, aframe-extras.controls, aframe-extras.loaders, aframe-orbit-controls, aframe-simple-sun-sky, chai, mocha, papaparse}" />
   </component>
 </project>
