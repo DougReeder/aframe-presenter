@@ -1,7 +1,9 @@
 // jsonToNodes.js — converts SPDX JSON data to d3-force-3d nodes and links
 // Copyright © 2026 by Doug Reeder under the MIT License
 
-import {cssSafeId} from "./workerUtil";
+import {showHideDescendants, cssSafeId} from "./workerUtil";
+
+const FILE_PRIMITIVE = 'octahedron';
 
 const spdxPrefix = /^SPDXRef-(?:([PpFfSs])(ackage|ile|nippet)-)?(npm-|apk-|github(?:actions)?-|maven-|gem-|pypi-|docker-|golang-|composer-)?/;
 function usableId(spdxId) {
@@ -92,6 +94,20 @@ export async function jsonToNodes(file, url) {
   if (numBadRelationships) { msg += `; ignored ${numBadRelationships} bad edges`;}
   info.push(msg);
 
+  for (const node of nodeMap.values()) {
+    let allChildrenAreFiles = true;
+    for (const outLink of node.out) {
+      if (outLink.target?.primitive !== FILE_PRIMITIVE) {
+        allChildrenAreFiles = false;
+        break;
+      }
+    }
+    if (node.out.size > 0 && allChildrenAreFiles) {
+      node.collapsed = true;
+      showHideDescendants(false, node);
+    }
+  }
+
   return {nodes: Array.from(nodeMap.values()), links, errors, warnings, info};
 
   function mapSpdxRelationship(relationship) {
@@ -112,6 +128,12 @@ export async function jsonToNodes(file, url) {
 
     const sourceId = usableId(relationship.spdxElementId);
     const targetId = usableId(relationship.relatedSpdxElement);
+    if (targetId === sourceId) {
+      const msg = `“to” node can't be distinguished from “from” node for edge ${title || relationship.spdxElementId + ' ' + relationship.relationshipType + ' ' + relationship.relatedSpdxElement}`;
+      console.warn(msg);
+      warnings.push(msg);
+      return {action: 'BAD'};
+    }
     const target = nodeMap.get(targetId);
     if (!target) {
       warnings.push(`can't find “to” node for edge ${title || sourceId + ' ' + relationship.relationshipType + ' ' + targetId}`);
@@ -131,10 +153,13 @@ export async function jsonToNodes(file, url) {
 
     // files should be closer to their packages
     // TODO: It's fragile to depend on the primitive type, but it's confined to this source file.
-    const isContainsFile = relationship.relationshipType === 'CONTAINS' && target?.primitive === 'octahedron';
+    const isContainsFile = relationship.relationshipType === 'CONTAINS' && target?.primitive === FILE_PRIMITIVE;
     const preferredLength = isContainsFile ? 0.08 : 0.30;
 
-    return {action: 'EDGE', link: {id, title, color, source, target, preferredLength, visible: sourceVisible && targetVisible}};
+    const link = {id, title, color, source, target, preferredLength, visible: sourceVisible && targetVisible};
+    source.out.add(link);
+    target.in.add(link);
+    return {action: 'EDGE', link};
   }
 }
 
@@ -238,7 +263,7 @@ function mapSpdxFile(file) {
   color ||= '#808080';
   const opacity = 1.0;
 
-  const primitive = 'octahedron';
+  const primitive = FILE_PRIMITIVE;
 
   const details = false;
 
@@ -250,9 +275,9 @@ function mapSpdxFile(file) {
 
   const size = 0.05;   // we could encode something as size
 
-  const visible = false;
+  const visible = true;
 
-  return {id, title, notes, imageUrl, linkUrl, color, opacity, primitive, details, collapsed, x, y, z, size, visible};
+  return {id, title, notes, imageUrl, linkUrl, color, opacity, primitive, details, collapsed, x, y, z, size, out: new Set(), in: new Set(), visible};
 }
 
 function mapSpdxPackage(pkg) {
@@ -327,7 +352,7 @@ function mapSpdxPackage(pkg) {
 
   const visible = true;
 
-  return {id, title, notes, imageUrl, linkUrl, color, opacity, primitive, details, collapsed, x, y, z, size, numChildren, visible};
+  return {id, title, notes, imageUrl, linkUrl, color, opacity, primitive, details, collapsed, x, y, z, size, out: new Set(), in: new Set(), numChildren, visible};
 }
 
 const RELATIONSHIP_TO_COLOR = {

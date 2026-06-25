@@ -47,14 +47,7 @@ describe('selectable-node-graph component', function() {
         component.urlInput.value = blobUrl;
         component.openUrl();
 
-        // waits for the async update to complete
-        await new Promise(resolve => {
-            const handleLoaded = () => {
-                el.removeEventListener('graph-loaded', handleLoaded);
-                resolve();
-            };
-            el.addEventListener('graph-loaded', handleLoaded);
-        });
+        await waitForEvent(el, 'graph-loaded');
 
         // with one node, spread should be 1
         expect(el.getAttribute('selectable-node-graph').spreadHoriz).to.equal(1);
@@ -83,14 +76,7 @@ describe('selectable-node-graph component', function() {
         component.urlInput.value = blobUrl;
         component.openUrl();
 
-        // waits for the async update to complete
-        await new Promise(resolve => {
-            const handleLoaded = () => {
-                el.removeEventListener('graph-loaded', handleLoaded);
-                resolve();
-            };
-            el.addEventListener('graph-loaded', handleLoaded);
-        });
+        await waitForEvent(el, 'graph-loaded');
 
         const nodeEl = el.children[0];
         expect(nodeEl.object3D.position.x).to.equal(1);
@@ -118,14 +104,7 @@ describe('selectable-node-graph component', function() {
         component.urlInput.value = blobUrl;
         component.openUrl();
 
-        // waits for the async update to complete
-        await new Promise(resolve => {
-            const handleLoaded = () => {
-                el.removeEventListener('graph-loaded', handleLoaded);
-                resolve();
-            };
-            el.addEventListener('graph-loaded', handleLoaded);
-        });
+        await waitForEvent(el, 'graph-loaded');
 
         // with multiple nodes, spread should ensure they fit
         const attr = el.getAttribute('selectable-node-graph');
@@ -175,14 +154,7 @@ describe('selectable-node-graph component', function() {
 
         await component.fileInptChange();
 
-        // waits for the async update to complete
-        await new Promise(resolve => {
-            const handleLoaded = () => {
-                el.removeEventListener('graph-loaded', handleLoaded);
-                resolve();
-            };
-            el.addEventListener('graph-loaded', handleLoaded);
-        });
+        await waitForEvent(el, 'graph-loaded');
 
         expect(el.children.length).to.be.at.least(1);
         const nodeEl = Array.from(el.children).find(child => child.getAttribute('id') === 'fileNode');
@@ -190,7 +162,7 @@ describe('selectable-node-graph component', function() {
         expect(nodeEl.object3D.position.x).to.equal(4);
     });
 
-    it('should make children non-visible when a node with all child nodes visible is clicked', async function() {
+    it('should hide children when an expanded node is clicked', async function() {
         const csvData = 'Uuid,Title,PositionX,PositionY,PositionZ,Color,Size,Shape,Collapsed,FromUuid,ToUuid\n' +
             'parentA,Parent Node A,0,0,0,ff0000,5,Ball,No,,\n' +
             'parentB,Parent Node B,0,0,0,ff0000,5,Box,No,,\n' +
@@ -206,13 +178,7 @@ describe('selectable-node-graph component', function() {
         component.urlInput.value = blobUrl;
         component.openUrl();
 
-        await new Promise(resolve => {
-            const handleLoaded = () => {
-                el.removeEventListener('graph-loaded', handleLoaded);
-                resolve();
-            };
-            el.addEventListener('graph-loaded', handleLoaded);
-        });
+        await waitForEvent(el, 'graph-loaded');
 
         const parentAEl = Array.from(el.children).find(c => c.id === 'parentA');
         const parentBEl = Array.from(el.children).find(c => c.id === 'parentB');
@@ -240,6 +206,9 @@ describe('selectable-node-graph component', function() {
         // Trigger click on parentA
         parentAEl.emit('click', { target: parentAEl });
 
+        await waitForEvent(el, 'graph-updated');
+        await waitForEvent(el, 'graph-updated');
+
         // Verify children and edges are now visible
         expect(child1El.getAttribute('visible')).to.be.true;   // has visible un-clicked parentB
         expect(child2El.getAttribute('visible')).to.be.false;
@@ -248,13 +217,15 @@ describe('selectable-node-graph component', function() {
         expect(edgeB1El.getAttribute('visible')).to.be.true;   // from visible un-clicked parent
     });
 
-    it('should make all children visible when a node with some non-visible child nodes is clicked', async function() {
+    it('should make all children visible when a collapsed node is clicked', async function() {
         const csvData = 'Uuid,Title,PositionX,PositionY,PositionZ,Color,Size,Shape,Collapsed,FromUuid,ToUuid\n' +
-            'parent,Parent Node,0,0,0,ff0000,5,Ball,No,,\n' +
+            'parentA,Parent Node A,0,0,0,ff0000,5,Ball,Yes,,\n' +
+            'parentB,Parent Node B,0,0,0,ff0000,5,Diamond,No,,\n' +
             'child1,Child 1,1,1,1,00ff00,5,Ball,No,,\n' +
             'child2,Child 2,-1,-1,-1,0000ff,5,Ball,No,,\n' +
-            ',Edge 1,NaN,NaN,NaN,808080,5,Ball,No,parent,child1\n' +
-            ',Edge 2,NaN,NaN,NaN,808080,5,Ball,No,parent,child2';
+            'eA1,Edge A1,NaN,NaN,NaN,808080,5,Ball,No,parentA,child1\n' +
+            'eA2,Edge A2,NaN,NaN,NaN,808080,5,Ball,No,parentA,child2\n' +
+            'eB1,Edge B2,NaN,NaN,NaN,808080,5,Ball,No,parentB,child1';
         const blob = new Blob([csvData], { type: 'text/csv' });
         blobUrl = URL.createObjectURL(blob);
 
@@ -262,39 +233,49 @@ describe('selectable-node-graph component', function() {
         component.urlInput.value = blobUrl;
         component.openUrl();
 
-        await new Promise(resolve => {
-            const handleLoaded = () => {
-                el.removeEventListener('graph-loaded', handleLoaded);
-                resolve();
-            };
-            el.addEventListener('graph-loaded', handleLoaded);
-        });
+        await waitForEvent(el, 'graph-loaded');
 
-        const parentEl = Array.from(el.children).find(c => c.id === 'parent');
+        const parentAEl = Array.from(el.children).find(c => c.id === 'parentA');
         const child1El = Array.from(el.children).find(c => c.id === 'child1');
         const child2El = Array.from(el.children).find(c => c.id === 'child2');
-        const edge1El = Array.from(el.children).find(c => c.components['graph-edge']?.data.toId === 'child1');
-        const edge2El = Array.from(el.children).find(c => c.components['graph-edge']?.data.toId === 'child2');
+        const edgeA1El = Array.from(el.children).find(c => c.id === 'eA1');
+        const edgeA2El = Array.from(el.children).find(c => c.id === 'eA2');
+        const edgeB1El = Array.from(el.children).find(c => c.id === 'eB1');
 
-        expect(parentEl).to.exist;
+        expect(parentAEl).to.exist;
         expect(child1El).to.exist;
         expect(child2El).to.exist;
-        expect(edge1El).to.exist;
-        expect(edge2El).to.exist;
+        expect(edgeA1El).to.exist;
+        expect(edgeA2El).to.exist;
+        expect(edgeB1El).to.exist;
 
-        // Manually hide children and edges for testing
-        child1El.setAttribute('visible', false);
-        child2El.setAttribute('visible', true);
-        edge1El.setAttribute('visible', true);
-        edge2El.setAttribute('visible', true);
+        expect(child1El.getAttribute('visible')).to.be.true;   // un-collapsed parentB
+        expect(edgeA1El.getAttribute('visible')).to.be.true;
+        expect(edgeB1El.getAttribute('visible')).to.be.true;
+        expect(child2El.getAttribute('visible')).to.be.false;   // sole parent is collapsed
+        expect(edgeA2El.getAttribute('visible')).to.be.false;
 
-        // Trigger click on parent
-        parentEl.emit('click', { target: parentEl });
+        // Trigger click on parentA
+        parentAEl.emit('click', { target: parentAEl });
+
+        await waitForEvent(el, 'graph-updated');
+        await waitForEvent(el, 'graph-updated');
 
         // Verify children and edges are now visible
         expect(child1El.getAttribute('visible')).to.be.true;
+        expect(edgeA1El.getAttribute('visible')).to.be.true;
+        expect(edgeB1El.getAttribute('visible')).to.be.true;
         expect(child2El.getAttribute('visible')).to.be.true;
-        expect(edge1El.getAttribute('visible')).to.be.true;
-        expect(edge2El.getAttribute('visible')).to.be.true;
+        expect(edgeA2El.getAttribute('visible')).to.be.true;
     });
 });
+
+async function waitForEvent(el, eventName) {
+    await new Promise(resolve => {
+        const handler = () => {
+            el.removeEventListener(eventName, handler);
+            resolve();
+        };
+        el.addEventListener(eventName, handler);
+    });
+}

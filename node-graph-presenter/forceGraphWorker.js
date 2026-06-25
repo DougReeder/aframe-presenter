@@ -10,19 +10,32 @@ import {
 } from 'd3-force-3d';
 import {csvToNodes} from "./csvToNodes";
 import {jsonToNodes} from "./jsonToNodes";
-import {SIM_SCALE} from "./workerUtil";
+import {showHideDescendants, SIM_SCALE} from "./workerUtil";
 
 const FRONTEND_UPDATE_INTERVAL = 10_000;   // ms (0.1Hz)
 const FRONTEND_MESSAGE_INTERVAL = 15;
 // Quest 3 & Croquet can't handle frequent updates from web worker
 
 onmessage = async function(event) {
+  console.debug('forceGraphWorker.js: onmessage:', event.data);
+  switch (event.data.command) {
+    case 'LOAD':
+      await load(event.data);
+      break;
+    case 'EXPAND_COLLAPSE':
+      collapseExpand(event.data.isExpand, event.data.toggledNode);   // references connected links and nodes
+      break;
+    default:
+      postMessage({kind: 'TRANSIENT_MSG', msg: `unknown command ${event.data.command}`});
+  }
+}
+
+async function load(data) {
   try {
-    console.debug('forceGraphWorker.js: onmessage:', event.data);
     let nodes, links, errors, warnings, info;
-    if (event.data.files) {
+    if (data.files) {
       let isUserNotified = false;
-      for (const file of event.data.files) {
+      for (const file of data.files) {
         try {
           if (file.type?.startsWith?.('text/csv')) {
             ({nodes, links, errors, warnings, info} = await csvToNodes(file));
@@ -51,14 +64,14 @@ onmessage = async function(event) {
       if (!isUserNotified) {
         postMessage({
           kind: 'PERSISTENT_MSG',
-          msg: 'No usable data:\n' + Array.from(event.data.files).map(f => `${f.name} ${f.type}`).join('\n')
+          msg: 'No usable data:\n' + Array.from(data.files).map(f => `${f.name} ${f.type}`).join('\n')
         });
       }
-      postMessage({kind: 'LOAD_FAIL', msg: 'No usable data: ' + Array.from(event.data.files).map(f => `${f.name} ${f.type}`).join(', ')});
-    } else if (event.data.url) {
-      const contentType = await getContentType(event.data.url);
+      postMessage({kind: 'LOAD_FAIL', msg: 'No usable data: ' + Array.from(data.files).map(f => `${f.name} ${f.type}`).join(', ')});
+    } else if (data.url) {
+      const contentType = await getContentType(data.url);
       if (contentType?.startsWith?.('text/csv')) {
-        ({nodes, links, errors, warnings, info} = await csvToNodes(event.data.url));
+        ({nodes, links, errors, warnings, info} = await csvToNodes(data.url));
         console.log('csvToNodes:', nodes, links, errors, warnings, info);
         postMessage({kind: 'TRANSIENT_MSG', msg: [...errors, ...warnings, ...info].join('\n')});
 
@@ -67,7 +80,7 @@ onmessage = async function(event) {
         postMessage({kind: 'UPDATE', nodes, links, msg: `all ${nodes.length} nodes, all ${links.length} edges`});
         postMessage({kind: 'LOAD_SUCCESS'});
       } else if (contentType?.startsWith?.('application/json')) {
-        ({nodes, links, errors, warnings, info} = await jsonToNodes(null, event.data.url));
+        ({nodes, links, errors, warnings, info} = await jsonToNodes(null, data.url));
         console.log('jsonToNodes:', nodes, links, errors, warnings, info);
         postMessage({kind: 'TRANSIENT_MSG', msg: [...errors, ...warnings, ...info].join('\n')});
 
@@ -87,7 +100,7 @@ onmessage = async function(event) {
     postMessage({kind: 'PERSISTENT_MSG', msg: err});
     postMessage({kind: 'LOAD_FAIL', msg: err});
   }
-};
+}
 
 async function getContentType(graphUrl) {
   let contentType;
@@ -218,4 +231,11 @@ function sendUpdates(nodes, links) {
 
 function cancelUpdates() {
   clearTimeout(self.messageTimeoutId);
+}
+
+
+function collapseExpand(isExpand, toggledNode) {
+  toggledNode.collapsed = !isExpand;
+  postMessage({kind: 'UPDATE', nodes: [toggledNode], links: [], msg: `node ${toggledNode.id} ` + (isExpand ? "expanded" : "collapsed")});
+  showHideDescendants(isExpand, toggledNode);
 }

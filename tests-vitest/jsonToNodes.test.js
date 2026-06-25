@@ -60,13 +60,16 @@ describe('jsonToNodes', function() {
     expect(node.color).to.equal('#ff0000');
     expect(node.opacity).to.equal(1.0);
     expect(node.primitive).to.equal('tetrahedron');
-    expect(node.collapsed).to.be.false;
+    expect(node.collapsed).to.be.false;   // no file children
     expect(node.x).to.be.NaN;
     expect(node.y).to.be.NaN;
     expect(node.z).to.be.NaN;
     expect(node.size).to.equal(0.05);
 
     expect(node.numChildren).to.equal(0);
+    expect(node.out.size).to.equal(0);
+    expect(node.in.size).to.equal(0);
+    expect(node.visible).to.be.true;
 
     expect(result.nodes).to.have.lengthOf(1);
   });
@@ -130,6 +133,8 @@ describe('jsonToNodes', function() {
     expect(result.info.length).to.equal(1);
 
     const express = result.nodes[0];
+    const bar = result.nodes[1];
+
     expect(express.id).to.equal('p-express-4182');
     expect(express.title).to.equal('express');
     expect(express.notes).to.equal('v4.18.2\nlicense: MIT');
@@ -143,11 +148,14 @@ describe('jsonToNodes', function() {
     expect(express.y).to.equal(0.0);
     expect(express.z).to.equal(0.0);
 
+    expect(express.collapsed).to.be.false;   // packages w/ no files aren't collapsed
     expect(express.numChildren).to.equal(0);
-
+    expect(express.out.size).to.equal(0);
+    expect(Array.from(express.in)[0].target).to.equal(express);
+    expect(Array.from(express.in)[0].source).to.equal(bar);
+    expect(express.in.size).to.equal(1);
     expect(express.visible).to.be.true;
 
-    const bar = result.nodes[1];
     expect(bar.id).to.equal('owner-bar-app-main-229496');
     expect(bar.title).to.equal('com.github.owner/bar-app');
     expect(bar.notes).to.equal('vmain\nlicense declared: LGPL-2.0');
@@ -160,7 +168,10 @@ describe('jsonToNodes', function() {
     expect(bar.x).to.be.NaN;
     expect(bar.x).to.be.NaN;
     expect(bar.x).to.be.NaN;
+    expect(bar.collapsed).to.be.false;   // packages w/ no files aren't collapsed
     expect(bar.numChildren).to.equal(1);
+    expect(bar.out.size).to.equal(1);
+    expect(bar.in.size).to.equal(0);
     expect(bar.visible).to.be.true;
 
     // No node created for SPDXRef-DOCUMENT DESCRIBES — it's only used to identify root node
@@ -389,7 +400,18 @@ describe('jsonToNodes', function() {
     expect(fileBusybox.x).to.be.NaN;
     expect(fileBusybox.y).to.be.NaN;
     expect(fileBusybox.z).to.be.NaN;
+    expect(fileBusybox.collapsed).to.be.false;   // files aren't collapsed
+    expect(fileBusybox.out.size).to.equal(0);
+    expect(fileBusybox.in.size).to.equal(1);
     expect(fileBusybox.visible).to.be.false;
+
+    const fileApkDb = result.nodes[2];
+    expect(fileApkDb.id).to.equal('F-lib-apk-db-installed-9f5aca292136191a');
+    expect(fileApkDb.title).to.equal('lib/apk/db/installed');
+    expect(fileApkDb.notes).to.equal('TEXT\nlicense: NOASSERTION');
+    expect(fileApkDb.collapsed).to.be.false;
+    expect(fileApkDb.out.size + fileApkDb.in.size).to.equal(2);   // rel. are OTHER
+    expect(fileApkDb.visible).to.be.true;   // parent "musl" has non-file child
 
     const pkgBusybox = result.nodes[3];
     expect(pkgBusybox.id).to.equal('P-busybox-fef07e9c95ea2bda');
@@ -400,10 +422,12 @@ describe('jsonToNodes', function() {
     expect(pkgBusybox.color).to.equal('#ff0000');
     expect(pkgBusybox.opacity).to.equal(1.0);
     expect(pkgBusybox.primitive).to.equal('icosahedron');
-    expect(pkgBusybox.collapsed).to.be.false;
+    expect(pkgBusybox.collapsed).to.be.true;   // contains file
     expect(pkgBusybox.x).to.be.NaN;
     expect(pkgBusybox.y).to.be.NaN;
     expect(pkgBusybox.z).to.be.NaN;
+    expect(pkgBusybox.out.size).to.equal(3);
+    expect(pkgBusybox.in.size).to.equal(2);
     expect(pkgBusybox.visible).to.be.true;
 
     expect(pkgBusybox.numChildren).to.equal(3);
@@ -421,23 +445,25 @@ describe('jsonToNodes', function() {
     expect(docRoot.x).to.equal(0);
     expect(docRoot.y).to.equal(0);
     expect(docRoot.z).to.equal(0);
+    expect(docRoot.out.size).to.equal(2);
+    expect(docRoot.in.size).to.equal(0);
     expect(docRoot.visible).to.be.true;
 
     expect(docRoot.numChildren).to.equal(2);
 
     // contained files are added as links
-    const fileEdge = result.links[0];
-    expect(fileEdge.id).to.equal('P-busybox-fef07e9c95ea2bda_CON_F-bin-busybox-1ac501c94e2f9f81');
-    expect(fileEdge.title).toBeUndefined();
-    expect(fileEdge.color).to.equal('#00ff00');
-    // expect(fileEdge.opacity).to.equal(1.0);
-    expect(fileEdge.source.id).to.equal('P-busybox-fef07e9c95ea2bda');
-    expect(fileEdge.target.id).to.equal('F-bin-busybox-1ac501c94e2f9f81');
-    expect(fileEdge.x).toBeNaN;
-    expect(fileEdge.y).toBeNaN;
-    expect(fileEdge.z).toBeNaN;
-    expect(fileEdge.preferredLength).to.equal(0.08);
-    expect(fileEdge.visible).to.be.false;
+    const fileBBEdge = result.links[0];
+    expect(fileBBEdge.id).to.equal('P-busybox-fef07e9c95ea2bda_CON_F-bin-busybox-1ac501c94e2f9f81');
+    expect(fileBBEdge.title).toBeUndefined();
+    expect(fileBBEdge.color).to.equal('#00ff00');
+    // expect(fileBBEdge.opacity).to.equal(1.0);
+    expect(fileBBEdge.source.id).to.equal('P-busybox-fef07e9c95ea2bda');
+    expect(fileBBEdge.target.id).to.equal('F-bin-busybox-1ac501c94e2f9f81');
+    expect(fileBBEdge.x).toBeNaN;
+    expect(fileBBEdge.y).toBeNaN;
+    expect(fileBBEdge.z).toBeNaN;
+    expect(fileBBEdge.preferredLength).to.equal(0.08);
+    expect(fileBBEdge.visible).to.be.false;
 
     // package-dependency relationships are added as links
     const packageDependencyEdge = result.links[2];
@@ -459,7 +485,7 @@ describe('jsonToNodes', function() {
     expect(otherRelationship.source.id).to.equal('P-busybox-fef07e9c95ea2bda');
     expect(otherRelationship.target.id).to.equal('F-lib-apk-db-installed-9f5aca292136191a');
     expect(otherRelationship.preferredLength).to.equal(0.30);
-    expect(otherRelationship.visible).to.be.false;
+    expect(otherRelationship.visible).to.be.true; // parent "musl" has non-file child
 
     // contained package edge
     const containedPackage = result.links[6];

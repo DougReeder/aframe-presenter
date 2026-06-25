@@ -7,6 +7,7 @@
     "test-classic": "node run-tests.js",
     "test-classic:debug": "node run-tests.js --debug",
     "vitest-modules:browser": "vitest --config=vite.config.js",
+    "vitest-modules:browser-inspect": "vitest --config=vite.config.js --inspect-brk --no-file-parallelism",
     "build": "vite build",
     "assemble": "mkdir -p dist; cp -pr index.html src data-presenter node-graph-presenter model-presenter assets dist/",
     "presurge": "npm run build && npm run assemble",

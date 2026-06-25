@@ -138,19 +138,30 @@ AFRAME.registerComponent('selectable-node-graph', {
 							el.setAttribute('id', node.id);
 							el.object3D.userData.id = node.id;
 						}
-						const data = {id: node.id, title: node.title, notes: node.notes,
-							imageUrl: node.imageUrl, linkUrl: node.linkUrl,
-							color: node.color, opacity: node.opacity, primitive: node.primitive, size: node.size,
-							collapsed: node.collapsed, numChildren: node.numChildren,
-							naturalPosition: this.calcNaturalPosition(node)};
+						const data = {id: node.id};
+						if ('title' in node) { data.title = node.title; }
+						if ('notes' in node) { data.notes = node.notes; }
+						if ('imageUrl' in node) { data.imageUrl = node.imageUrl; }
+						if ('linkUrl' in node) { data.linkUrl = node.linkUrl; }
+						if ('color' in node) { data.color = node.color; }
+						if ('opacity' in node) { data.opacity = node.opacity; }
+						if ('primitive' in node) { data.primitive = node.primitive; }
+						if ('size' in node) { data.size = node.size; }
+						if ('collapsed' in node) { data.collapsed = node.collapsed; }
+						if ('numChildren' in node) { data.numChildren = node.numChildren; }
+						if ('x' in node && 'y' in node && 'z' in node) {
+							data.naturalPosition = this.calcNaturalPosition(node);
+							el.object3D?.position?.set(data.naturalPosition.x * this.data.spreadHoriz,
+									data.naturalPosition.y * this.data.spreadVert, data.naturalPosition.z * this.data.spreadHoriz);
+						}
 						el.setAttribute('graph-node', data);
-						el.object3D?.position?.set(data.naturalPosition.x * this.data.spreadHoriz,
-								data.naturalPosition.y * this.data.spreadVert, data.naturalPosition.z * this.data.spreadHoriz);
-						el.setAttribute('visible', !!node.visible);
-						if (node.visible) {
-							el.classList.add(PRESENTATION_CLASS);
-						} else {
-							el.classList.remove(PRESENTATION_CLASS);
+						if ('visible' in node) {
+							el.setAttribute('visible', !!node.visible);
+							if (node.visible) {
+								el.classList.add(PRESENTATION_CLASS);
+							} else {
+								el.classList.remove(PRESENTATION_CLASS);
+							}
 						}
 						if (isNew) {
 							el.setAttribute('multiuser', 'anim:false');
@@ -166,23 +177,40 @@ AFRAME.registerComponent('selectable-node-graph', {
 							edgeEl.setAttribute('id', link.id);
 							edgeEl.object3D.userData.id = link.id;
 						}
-						const data = {id: link.id, title: link.title, color: link.color, opacity: link.opacity,
-							fromId: link.source.id, start: this.calcActualPosition(link.source),
-							toId: link.target.id, end: this.calcActualPosition(link.target)};
-						edgeEl.setAttribute('graph-edge', data);
-						for (const child of edgeEl.object3D.children) {
-							if (child.isLine) {
-								child?.geometry?.setFromPoints?.([data.start, data.end]);
-							} else if (child.isGroup) {
-								child.position.set((data.start.x + data.end.x) / 2, (data.start.y + data.end.y) / 2 + 0.001, (data.start.z + data.end.z) / 2);
+						const data = {id: link.id};
+						if ('title' in link) { data.title = link.title; }
+						if ('color' in link) { data.color = link.color; }
+						if ('source' in link) {
+							data.fromId = link.source.id;
+							if ('x' in link.source && 'y' in link.source && 'z' in link.source) {
+								data.start = this.calcActualPosition(link.source);
 							}
 						}
-						edgeEl.setAttribute('visible', !!(link.source.visible && link.target.visible));
+						if ('target' in link) {
+							data.toId = link.target.id;
+							if ('x' in link.target && 'y' in link.target && 'z' in link.target) {
+								data.end = this.calcActualPosition(link.target);
+							}
+						}
+						edgeEl.setAttribute('graph-edge', data);
+						if (data.start && data.end) {
+							for (const child of edgeEl.object3D.children) {
+								if (child.isLine) {
+									child?.geometry?.setFromPoints?.([data.start, data.end]);
+								} else if (child.isGroup) {
+									child.position.set((data.start.x + data.end.x) / 2, (data.start.y + data.end.y) / 2 + 0.001, (data.start.z + data.end.z) / 2);
+								}
+							}
+						}
+						if ('visible' in link) {
+							edgeEl.setAttribute('visible', !!(link.source.visible && link.target.visible));
+						}
 						if (isNew) {
 							edgeEl.setAttribute('multiuser', 'anim:false');
 							this.el.appendChild(edgeEl);   // is an asynchronous operation
 						}
 					}
+					this.el.emit('graph-updated');
 					break;
 				case 'LOAD_SUCCESS':
 					try {
@@ -237,7 +265,7 @@ AFRAME.registerComponent('selectable-node-graph', {
 			postMessage({kind: 'CLEAR_PERSISTENT_MSG'});
 			removeAllChildren(this.el).catch(console.error);
 
-			this.graphWorker.postMessage({url: url.href});
+			this.graphWorker.postMessage({command: 'LOAD', url: url.href});
 
 			const baseName = url.href?.split('/')?.at(-1)?.split('.').slice(0, -1).join('.');
 			document.title = baseName ? baseName + " • Node Graph Presenter" : "Node Graph Presenter";
@@ -263,7 +291,7 @@ AFRAME.registerComponent('selectable-node-graph', {
 			postMessage({kind: 'CLEAR_PERSISTENT_MSG'});
 			removeAllChildren(this.el).catch(console.error);
 
-			this.graphWorker.postMessage({files: this.fileInpt.files});
+			this.graphWorker.postMessage({command: 'LOAD', files: this.fileInpt.files});
 
 			const baseName = this.fileInpt.files[0]?.name?.split('.').slice(0, -1).join('.');
 			document.title = baseName ? baseName + " • Node Graph Presenter" : "Node Graph Presenter";
@@ -288,7 +316,7 @@ AFRAME.registerComponent('selectable-node-graph', {
 					postMessage({kind: 'CLEAR_PERSISTENT_MSG'});
 					removeAllChildren(this.el).catch(console.error);
 
-					this.graphWorker.postMessage({files: [files[i]]});
+					this.graphWorker.postMessage({command: 'LOAD', files: [files[i]]});
 
 					const baseName = files[i]?.name?.split('.').slice(0, -1).join('.');
 					document.title = baseName ? baseName + " • Node Graph Presenter" : "Node Graph Presenter";
@@ -440,107 +468,57 @@ AFRAME.registerComponent('selectable-node-graph', {
 	},
 
 	toggleNode: async function (evt) {
-		const toggledNodeId = evt.target.id;
+		const data = evt.target.components?.['graph-node']?.data;
+		if (!data) {
+			postMessage({kind: 'TRANSIENT_MSG', msg: `Can't toggle that`});
+			return;
+		}
+
+		const {nodeMap} = await this.collectGraph();
+		const toggledNode = nodeMap.get(evt.target.id);   // references connected links and nodes
+		// double negative, because we're toggling and isExpand is the opposite of collapsed
+		this.graphWorker.postMessage({command: 'EXPAND_COLLAPSE', isExpand: !!data.collapsed, toggledNode});
+	},
+
+	collectGraph: async function () {
 		let lastYield = Date.now();
-
-		const edges = [], childNodes = [], childNodeIds = [];
-		let allVisible = true;
-		for (const el of Array.from(this.el.children)) {
-			const elEdgeData = el.components['graph-edge']?.data;
-			if (elEdgeData?.fromId === toggledNodeId) {
-				edges.push(el);
-
-				const childNodeId = elEdgeData.toId;
-				const childNode = document.getElementById(childNodeId);
-				if (childNode) {
-					childNodes.push(childNode);
-					childNodeIds.push(childNodeId);
-					if (!(childNode?.getAttribute('visible'))) {
-						allVisible = false;
-					}
+		const nodeMap = new Map();
+		const links = [];
+		for (const graphEl of this.el.children) {
+			const nodeData = graphEl.components['graph-node']?.data;
+			if (nodeData) {
+				const node = {   // only fields required for expand/collapse
+					id: nodeData.id,
+					collapsed: nodeData.collapsed,
+					visible: graphEl.getAttribute('visible'),
+					out: new Set(),
+					in: new Set(),
+				};
+				nodeMap.set(node.id, node);
+			}
+		}
+		if (Date.now() - lastYield > YIELD_DEADLINE) { await schedulerYield(); }
+		for (const graphEl of this.el.children) {
+			const edgeData = graphEl.components['graph-edge']?.data;
+			if (edgeData) {
+				const source = nodeMap.get(edgeData.fromId);
+				const target = nodeMap.get(edgeData.toId);
+				if (source && target) {
+					const link = {
+						id: edgeData.id,
+						visible: graphEl.getAttribute('visible'),
+						source,
+						target,
+					};
+					links.push(link);
+					source.out.add(link);
+					target.in.add(link);
+				} else {
+					console.warn(`edge ${JSON.stringify(edgeData)} missing "from" or "to" node:`, edgeData.fromId, edgeData.toId);
 				}
 			}
 		}
-		console.debug(`toggleNode ${toggledNodeId} allVisible was ${allVisible}`);
-		const newVisible = !allVisible;
-
-		if (newVisible) {
-			for (const childNode of childNodes) {
-				childNode.setAttribute('visible', true);
-				childNode.classList.add(PRESENTATION_CLASS);
-			}
-			for (const el of this.el.children) {
-				const elEdgeData = el.components['graph-edge']?.data;
-				if (childNodeIds.includes(elEdgeData?.toId) &&
-						document.getElementById(elEdgeData?.fromId)?.getAttribute('visible')) {
-					el.setAttribute('visible', true);
-				}
-			}
-		} else {
-			const descendantNodeIds = new Set(childNodeIds);
-			// toggledNodeId is in the set to curb circular references
-			descendantNodeIds.add(toggledNodeId);
-			for (const descendantNodeId of descendantNodeIds) {
-				if (descendantNodeId === toggledNodeId) { continue; }
-				if (Date.now() - lastYield > YIELD_DEADLINE) {
-					await schedulerYield();
-					lastYield = Date.now();
-				}
-				this.addDescendantNodeIds(descendantNodeId, descendantNodeIds);
-			}
-			for (const descendantNodeId of descendantNodeIds) {
-				if (descendantNodeId === toggledNodeId) { continue; }
-				if (Date.now() - lastYield > YIELD_DEADLINE) {
-					await schedulerYield();
-					lastYield = Date.now();
-				}
-				if (this.allParentsHidden(descendantNodeId, descendantNodeIds)) {
-					const descendantNodeEl = document.getElementById(descendantNodeId);
-					descendantNodeEl.setAttribute('visible', false);
-					descendantNodeEl.classList.remove(PRESENTATION_CLASS);
-					for (const el of this.el.children) {
-						const elEdgeData = el.components['graph-edge']?.data;
-						if (elEdgeData?.fromId === descendantNodeId || elEdgeData?.toId === descendantNodeId) {
-							el.setAttribute('visible', false);
-						}
-					}
-				}
-			}
-		}
-	},
-
-	/**
-	 * Locates all descendant nodes of a given node
-	 * @param {string} nodeId
-	 * @param {Set<string>} descendantNodeIds
-	 */
-	addDescendantNodeIds: function (nodeId, descendantNodeIds) {
-		for (const el of this.el.children) {
-			const elEdgeData = el.components['graph-edge']?.data;
-			if (elEdgeData?.fromId === nodeId) {
-				if (!descendantNodeIds.has(elEdgeData.toId)) {
-					descendantNodeIds.add(elEdgeData.toId);
-					this.addDescendantNodeIds(elEdgeData.toId, descendantNodeIds);
-				}
-			}
-		}
-	},
-
-	/**
-	 * Determines if a given node has any visible parent that is not excluded.
-	 * @param {string} nodeId
-	 * @param{Set<string>} excludedParentNodeIds
-	 * @returns {boolean}
-	 */
-	allParentsHidden: function (nodeId, excludedParentNodeIds) {
-		for (const el of this.el.children) {
-			const elEdgeData = el.components['graph-edge']?.data;
-			if (elEdgeData?.toId === nodeId && !excludedParentNodeIds.has(elEdgeData.fromId) &&
-					document.getElementById(elEdgeData?.fromId)?.getAttribute('visible')) {
-				return false;
-			}
-		}
-		return true;
+		return {nodeMap, links}
 	},
 
 	pause: function () {

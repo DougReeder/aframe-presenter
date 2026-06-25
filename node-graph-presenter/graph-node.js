@@ -28,10 +28,6 @@ AFRAME.registerComponent('graph-node', {
     this.el.addEventListener('mouseenter', this.handlers.showDetails);
     this.handlers.hideDetails = this.hideDetails.bind(this);
     this.el.addEventListener('mouseleave', this.handlers.hideDetails);
-
-    this.setNodeGeometry(this.data.primitive, this.data.size);
-    const isFlat = ['plane', 'circle', 'ring', 'triangle'].includes(this.data.primitive);
-    this.setNodeMaterial(this.data.color, this.data.opacity, isFlat);
   },
 
   update: function (oldData) {
@@ -68,6 +64,10 @@ AFRAME.registerComponent('graph-node', {
     if ((this.data.linkUrl || oldData.linkUrl) &&
         (this.data.linkUrl !== oldData.linkUrl || this.data.size !== oldData.size || this.data.details !== oldData.details)) {
       this.setLinkChild(this.data.linkUrl, this.data.size, this.data.details);
+    }
+    if ((this.data.collapsed || oldData.collapsed) &&
+        (this.data.collapsed !== oldData.collapsed || this.data.size !== oldData.size)) {
+      this.setCollapsedChild(this.data.collapsed, this.data.size);
     }
   },
 
@@ -206,6 +206,18 @@ AFRAME.registerComponent('graph-node', {
     linkEl.setAttribute('on', 'raycaster-intersected');
     linkEl.classList.add(PRESENTATION_CLASS);
     this.el.appendChild(linkEl);
+  },
+
+  setCollapsedChild: function (collapsed, size) {
+    this.el.querySelector('a-tetrahedron')?.remove();
+    if (!collapsed) { return; }
+
+    const indicatorEl = document.createElement('a-tetrahedron');
+    indicatorEl.object3D.position.set(0, -(size/2 + 0.02), 0);
+    indicatorEl.setAttribute('radius', 0.0125);
+    indicatorEl.setAttribute('color', 'purple');
+    indicatorEl.classList.add(PRESENTATION_CLASS);
+    this.el.appendChild(indicatorEl);
   },
 
   showDetails: function (_evt) {

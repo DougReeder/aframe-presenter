@@ -2,7 +2,7 @@
 // Copyright © 2026 by Doug Reeder under the MIT License
 
 import Papa from 'papaparse';
-import {cssSafeId, threeJsColor} from "./workerUtil";
+import {showHideDescendants, cssSafeId, threeJsColor} from "./workerUtil";
 
 export async function csvToNodes(fileOrUrl) {
   console.debug('csvToNodes: fileOrUrl = ' + fileOrUrl);
@@ -48,7 +48,7 @@ export async function csvToNodes(fileOrUrl) {
             y ??= Math.random() * 2;
             z ??= Math.random() * 2 - 1
 
-            const node = {id, title, notes, imageUrl, linkUrl, color, opacity, primitive, size, collapsed, x, y, z, visible: true};
+            const node = {id, title, notes, imageUrl, linkUrl, color, opacity, primitive, size, collapsed, x, y, z, visible: true, out: new Set(), in: new Set()};
 
             if (nodeMap.has(id)) {
               warnings.push(`duplicate node ID "${id}"`);
@@ -69,7 +69,14 @@ export async function csvToNodes(fileOrUrl) {
               warnings.push(`can't find “to” node for edge “${title || notes || id}”`);
               continue;
             }
-            links.push({id, title, color, opacity, source, target});
+            if (target === source) {
+              console.warn(`“to” node is same as “from” node for edge “${title || notes || id}”`);
+              warnings.push(`“to” node is same as “from” node for edge “${title || notes || id}”`);
+              continue;
+            }
+            links.push({id, title, color, opacity, source, target, visible: true});
+            source.out.add(links.at(-1));
+            target.in.add(links.at(-1));
           } else {
             console.warn(`unknown thing “${title || notes?.slice(0, 20) || primitive || imageUrl}”`);
             warnings.push(`unknown thing “${title || notes?.slice(0, 20) || primitive || imageUrl}”`);
@@ -97,6 +104,12 @@ export async function csvToNodes(fileOrUrl) {
       }
     });
   });
+
+  for (const node of nodeMap.values()) {
+    if (node.collapsed) {
+      showHideDescendants(false, node);
+    }
+  }
 
   return {nodes: Array.from(nodeMap.values()), links, errors, warnings, info};
 }
