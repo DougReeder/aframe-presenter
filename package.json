@@ -13,8 +13,9 @@
     "presurge": "npm run build && npm run assemble",
     "surge": "surge dist https://group-viewer.surge.sh",
     "old": "rsync -rtm --delete index.html src data-presenter node-graph-presenter model-presenter assets root@mail.hominidsoftware.com:/var/www/beta/",
-    "preprod": "npm run assemble",
+    "preprod": "npm run build && npm run assemble",
     "prod": "rsync -v --rsh='ssh -p 2222 -i ~/.ssh/id_passwordless' --archive --delete --prune-empty-dirs --human-readable --exclude '.DS_Store' ~/git/aframe-presenter/dist/* composed@hominidsoftware.com:/var/www/modelpresenter/",
+    "pres3": "npm run build && npm run assemble",
     "s3": "aws s3 sync dist/ s3://web-static.hominidsoftware.com/modelpresenter/"
   },
   "keywords": [
