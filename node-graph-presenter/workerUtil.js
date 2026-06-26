@@ -41,41 +41,45 @@ export function threeJsColor(color) {
  */
 export function showHideDescendants(isExpand, toggledNode) {
   const family = new Set().add(toggledNode);
-  collectDescendants(toggledNode, family);
+  showHideChildren(isExpand, toggledNode, family);
+}
 
-  for (const descendant of family) {
-    if (descendant === toggledNode) { continue; }
+function showHideChildren(isExpand, node, family) {
+  for (const outLink of node.out) {
+    const child = outLink.target;
+    if (family.has(child)) { continue; }   // deals w/ cycles
+    family.add(child);
 
-    let anyParentVisible = false;
-    for (const inLink of descendant.in) {
-      if (inLink.source.visible && !inLink.source.collapsed && (isExpand || !family.has(inLink.source))) {
-        anyParentVisible = true;
-        break;
-      }
-    }
-
-    if (isExpand ? anyParentVisible : !anyParentVisible) {
-      descendant.visible = isExpand;
-      const nodes = [descendant];
+    const isVisible = fullyExpandedLineageFromRoot(child, new Set());
+    if (isExpand ? isVisible : !isVisible) {
+      child.visible = isExpand;
+      const nodes = [child];
       const links = [];
-      for (const inLink of descendant.in) {
+      for (const inLink of child.in) {
         inLink.visible = isExpand;
         links.push(inLink);
       }
-      for (const outLink of descendant.out) {
+      for (const outLink of child.out) {
         outLink.visible = isExpand;
         links.push(outLink);
       }
       postMessage({kind: 'UPDATE', nodes, links, msg: (isExpand ? "expanding" : "collapsing") + ` ${nodes.length} nodes & ${links.length} edges`});
     }
+
+    showHideChildren(isExpand, child, family);
   }
 }
 
-function collectDescendants(node, family) {
-  for (const outLink of node.out) {
-    const child = outLink.target;
-    if (family.has(child)) { continue; }   // deals w/ cycles
-    family.add(child);
-    collectDescendants(child, family);
+function fullyExpandedLineageFromRoot(node, nodesChecked) {
+  if (0 === node.in.size) { return !node.collapsed; }   // no ancestors; is root
+
+  for (const inLink of node.in) {
+    const parent = inLink.source;
+    if (nodesChecked.has(parent)) { continue; }
+    nodesChecked.add(parent);
+
+    if (parent.collapsed) { continue; }
+    if (fullyExpandedLineageFromRoot(parent, nodesChecked)) { return true; }
   }
+  return false;
 }
