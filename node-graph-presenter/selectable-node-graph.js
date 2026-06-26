@@ -108,6 +108,7 @@ AFRAME.registerComponent('selectable-node-graph', {
 		spinner.setAttribute('animation__endspinhide',
 			{startEvents: 'animationcomplete__endspin', property: 'visible', to: false, dur: 0});
 		spinner.setAttribute('visible', false);
+		spinner.setAttribute('multiuser', 'anim:false');
 		this.el.sceneEl.appendChild(spinner);
 
 		spinner.addEventListener('stateadded', this.handlers.spinnerStateAdded);

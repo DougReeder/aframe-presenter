@@ -29,6 +29,8 @@
 
     <a-presenter id="presenter" presentationId="presentation" pointerModelId="pointerModel" flatscreenorbit="true" fly="false" tps="60" log="false"></a-presenter>
 
+    <!-- ring marks where model will be placed -->
+    <a-ring radius-inner="1.41421" radius-outer="1.5" segments-phi="128" color="#6b6b6b" rotation="-90 0 0" position="0 0.003 0"></a-ring>
     <a-entity id="floor" geometry="primitive: plane; height: 100; width: 100;" rotation="-90 0 0"
               material="src: #floorTexture; repeat: 100 100; normalMap: #floorNormalMap; normalTextureRepeat: 100 100; ambientOcclusionMap: #floorAmbientOcclusionMap; ambientOcclusionTextureRepeat: 100 100; "></a-entity>
     <a-sky src="#checkerboardEquirect"></a-sky>
