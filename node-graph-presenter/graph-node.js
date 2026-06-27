@@ -11,7 +11,7 @@ AFRAME.registerComponent('graph-node', {
     color: {type: 'color'},
     opacity: {default: 1.0},
     primitive: {default: 'box'},
-    size: {default: 0.05},           // in meters
+    size: {default: 0.06},           // in meters
     details: {default: false},
     collapsed: {default: false},
     numChildren: {default: 0},

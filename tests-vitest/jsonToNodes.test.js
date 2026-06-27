@@ -64,7 +64,7 @@ describe('jsonToNodes', function() {
     expect(node.x).to.be.NaN;
     expect(node.y).to.be.NaN;
     expect(node.z).to.be.NaN;
-    expect(node.size).to.equal(0.05);
+    expect(node.size).to.equal(0.06);
 
     expect(node.numChildren).to.equal(0);
     expect(node.out.size).to.equal(0);

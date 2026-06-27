@@ -194,15 +194,6 @@ AFRAME.registerComponent('selectable-node-graph', {
 							}
 						}
 						edgeEl.setAttribute('graph-edge', data);
-						if (data.start && data.end) {
-							for (const child of edgeEl.object3D.children) {
-								if (child.isLine) {
-									child?.geometry?.setFromPoints?.([data.start, data.end]);
-								} else if (child.isGroup) {
-									child.position.set((data.start.x + data.end.x) / 2, (data.start.y + data.end.y) / 2 + 0.001, (data.start.z + data.end.z) / 2);
-								}
-							}
-						}
 						if ('visible' in link) {
 							edgeEl.setAttribute('visible', !!(link.source.visible && link.target.visible));
 						}
@@ -359,23 +350,13 @@ AFRAME.registerComponent('selectable-node-graph', {
 						graphEl.object3D.position.y = graphElNodeAttr.naturalPosition.y * this.data.spreadVert;
 						continue;
 					}
-					const graphElEdgeAttr = graphEl.getAttribute('graph-edge');
-					if (graphElEdgeAttr) {
-						const fromNode = document.getElementById(graphElEdgeAttr.fromId);
+					const edgeComponent = graphEl.components['graph-edge'];
+					if (edgeComponent) {
+						const fromNode = document.getElementById(edgeComponent.data.fromId);
 						const start = fromNode?.object3D?.position;
-						const toNode = document.getElementById(graphElEdgeAttr.toId);
+						const toNode = document.getElementById(edgeComponent.data.toId);
 						const end = toNode?.object3D?.position;
-						if (Number.isFinite(start?.x) && Number.isFinite(start?.y) && Number.isFinite(start?.z) &&
-								Number.isFinite(end?.x) && Number.isFinite(end?.y) && Number.isFinite(end?.z)) {
-							// avoids setAttribute, which calls Croquet
-							for (const child of graphEl.object3D.children) {
-								if (child.isLine) {
-									child?.geometry?.setFromPoints?.([fromNode.object3D.position, toNode.object3D.position]);
-								} else if (child.isGroup) {
-									child.position.set((start.x + end.x) / 2, (start.y + end.y) / 2 + 0.001, (start.z + end.z) / 2);
-								}
-							}
-						}
+						edgeComponent.setObject3Ds(start, end);
 						continue;
 					}
 				}

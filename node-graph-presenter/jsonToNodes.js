@@ -273,7 +273,7 @@ function mapSpdxFile(file) {
   const y = NaN;
   const z = NaN;
 
-  const size = 0.05;   // we could encode something as size
+  const size = 0.06;   // we could encode something as size
 
   const visible = true;
 
@@ -346,7 +346,7 @@ function mapSpdxPackage(pkg) {
   const y = NaN;
   const z = NaN;
 
-  const size = 0.05;   // we could encode something as size
+  const size = 0.06;   // we could encode something as size
 
   const numChildren = 0;
 
