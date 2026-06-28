@@ -108,7 +108,7 @@ export async function jsonToNodes(file, url) {
     }
     if (node.out.size > 0 && allChildrenAreFiles) {
       node.collapsed = true;
-      showHideDescendants(false, node);
+      showHideDescendants(false, node, false);
     }
   }
 

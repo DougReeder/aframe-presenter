@@ -237,5 +237,5 @@ function cancelUpdates() {
 function collapseExpand(isExpand, toggledNode) {
   toggledNode.collapsed = !isExpand;
   postMessage({kind: 'UPDATE', nodes: [toggledNode], links: [], msg: `node ${toggledNode.id} ` + (isExpand ? "expanded" : "collapsed")});
-  showHideDescendants(isExpand, toggledNode);
+  showHideDescendants(isExpand, toggledNode, true);
 }

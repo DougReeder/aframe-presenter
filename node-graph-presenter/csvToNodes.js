@@ -107,7 +107,7 @@ export async function csvToNodes(fileOrUrl) {
 
   for (const node of nodeMap.values()) {
     if (node.collapsed) {
-      showHideDescendants(false, node);
+      showHideDescendants(false, node, false);
     }
   }
 

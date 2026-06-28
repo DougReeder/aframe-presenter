@@ -203,7 +203,7 @@ describe('csvToNodes', function() {
 
 
         nodes[1].collapsed = false;
-        showHideDescendants(true, nodes[1]);
+        showHideDescendants(true, nodes[1], false);
         expect(nodes[1].collapsed).to.be.false;
         expect(nodes[1].visible).to.be.true;
         expect(nodes[2].collapsed).to.be.false;

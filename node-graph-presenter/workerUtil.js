@@ -39,12 +39,12 @@ export function threeJsColor(color) {
  * @param {boolean} isExpand — expand or collapse
  * @param {Object} toggledNode — the node which just had collapsed set
  */
-export function showHideDescendants(isExpand, toggledNode) {
+export function showHideDescendants(isExpand, toggledNode, postUpdates = true) {
   const family = new Set().add(toggledNode);
-  showHideChildren(isExpand, toggledNode, family);
+  showHideChildren(isExpand, toggledNode, postUpdates, family);
 }
 
-function showHideChildren(isExpand, node, family) {
+function showHideChildren(isExpand, node, postUpdates, family) {
   for (const outLink of node.out) {
     const child = outLink.target;
     if (family.has(child)) { continue; }   // deals w/ cycles
@@ -63,10 +63,14 @@ function showHideChildren(isExpand, node, family) {
         outLink.visible = isExpand;
         links.push(outLink);
       }
-      postMessage({kind: 'UPDATE', nodes, links, msg: (isExpand ? "expanding" : "collapsing") + ` ${nodes.length} nodes & ${links.length} edges`});
+      if (postUpdates) {
+        postMessage({ kind: 'UPDATE', nodes, links,
+          msg: (isExpand ? "expanding" : "collapsing") + ` ${nodes.length} nodes & ${links.length} edges`
+        });
+      }
     }
 
-    showHideChildren(isExpand, child, family);
+    showHideChildren(isExpand, child, postUpdates, family);
   }
 }
 
