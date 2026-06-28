@@ -194,8 +194,10 @@ AFRAME.registerComponent('selectable-node-graph', {
 							}
 						}
 						edgeEl.setAttribute('graph-edge', data);
-						if ('visible' in link) {
+						if (link?.source && 'visible' in link.source && link?.target && 'visible' in link.target) {
 							edgeEl.setAttribute('visible', !!(link.source.visible && link.target.visible));
+						} else if ('visible' in link) {
+							edgeEl.setAttribute('visible', !!link.visible);
 						}
 						if (isNew) {
 							edgeEl.setAttribute('multiuser', 'anim:false');
@@ -234,18 +236,20 @@ AFRAME.registerComponent('selectable-node-graph', {
 		}
 	},
 
-	/**
-	 *
-	 * @param {number} node.x sim position
-	 * @param {number} node.y sim position
-	 * @param {number} node.z sim position
-	 */
 	calcNaturalPosition: function (node) {
-		return {x: node.x??0, y: node.y??0, z: node.z??0}
+		return {
+			x: Number.isFinite(node.x) ? node.x : 0,
+			y: Number.isFinite(node.y) ? node.y : 0,
+			z: Number.isFinite(node.z) ? node.z : 0
+		}
 	},
 
 	calcActualPosition: function (node) {
-		return {x: (node.x??0)*this.data.spreadHoriz, y: (node.y??0)*this.data.spreadVert, z: (node.z??0)*this.data.spreadHoriz}
+		return {
+			x: (Number.isFinite(node.x) ? node.x : 0) * this.data.spreadHoriz,
+			y: (Number.isFinite(node.y) ? node.y : 0) * this.data.spreadVert,
+			z: (Number.isFinite(node.z) ? node.z : 0) * this.data.spreadHoriz
+		}
 	},
 
 	openUrl: function (evt) {
