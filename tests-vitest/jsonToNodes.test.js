@@ -403,7 +403,7 @@ describe('jsonToNodes', function() {
     expect(fileBusybox.collapsed).to.be.false;   // files aren't collapsed
     expect(fileBusybox.out.size).to.equal(0);
     expect(fileBusybox.in.size).to.equal(1);
-    expect(fileBusybox.visible).to.be.false;
+    expect(fileBusybox.visible).to.be.true;   // package busybox depends on package musl
 
     const fileApkDb = result.nodes[2];
     expect(fileApkDb.id).to.equal('F-lib-apk-db-installed-9f5aca292136191a');
@@ -416,26 +416,26 @@ describe('jsonToNodes', function() {
     const pkgBusybox = result.nodes[3];
     expect(pkgBusybox.id).to.equal('P-busybox-fef07e9c95ea2bda');
     expect(pkgBusybox.title).to.equal('busybox');
-    expect(pkgBusybox.notes).to.equal('Size optimized toolbox of many common UNIX utilities\nv1.37.0-r31\nlicense: NOASSERTION\nlicense declared: GPL-2.0-only');
+    expect(pkgBusybox.notes).to.equal('Size optimized toolbox of many common UNIX utilities\nv1.37.0-r31\nlicense declared: GPL-2.0-only');
     expect(pkgBusybox.imageUrl).toBeFalsy();
     expect(pkgBusybox.linkUrl).to.equal('https://busybox.net/');
     expect(pkgBusybox.color).to.equal('#ff0000');
     expect(pkgBusybox.opacity).to.equal(1.0);
     expect(pkgBusybox.primitive).to.equal('icosahedron');
-    expect(pkgBusybox.collapsed).to.be.true;   // contains file
+    expect(pkgBusybox.collapsed).to.be.false;   // depends on package musl
     expect(pkgBusybox.x).to.be.NaN;
     expect(pkgBusybox.y).to.be.NaN;
     expect(pkgBusybox.z).to.be.NaN;
-    expect(pkgBusybox.out.size).to.equal(3);
-    expect(pkgBusybox.in.size).to.equal(2);
+    expect(pkgBusybox.out.size).to.equal(4);
+    expect(pkgBusybox.in.size).to.equal(1);
     expect(pkgBusybox.visible).to.be.true;
 
-    expect(pkgBusybox.numChildren).to.equal(3);
+    expect(pkgBusybox.numChildren).to.equal(4);
 
     const docRoot = result.nodes[5];
     expect(docRoot.id).to.equal('DocumentRoot-Directory-sbom');
     expect(docRoot.title).to.equal('sbom');
-    expect(docRoot.notes).to.equal('license: NOASSERTION');
+    expect(docRoot.notes).toBeFalsy();
     expect(docRoot.imageUrl).toBeFalsy();
     expect(docRoot.linkUrl).to.equal('https://example.com/sbom.zip');
     expect(docRoot.color).to.equal('#808080');
@@ -463,16 +463,16 @@ describe('jsonToNodes', function() {
     expect(fileBBEdge.y).toBeNaN;
     expect(fileBBEdge.z).toBeNaN;
     expect(fileBBEdge.preferredLength).to.equal(0.08);
-    expect(fileBBEdge.visible).to.be.false;
+    expect(fileBBEdge.visible).to.be.true;
 
     // package-dependency relationships are added as links
     const packageDependencyEdge = result.links[2];
-    expect(packageDependencyEdge.id).to.equal('P-musl-f7ad0ee8f1c27cb0_DEP_P-busybox-fef07e9c95ea2bda');
+    expect(packageDependencyEdge.id).to.equal('P-busybox-fef07e9c95ea2bda_DEP_P-musl-f7ad0ee8f1c27cb0');
     expect(packageDependencyEdge.title).toBeFalsy();
     expect(packageDependencyEdge.color.toLowerCase()).to.equal('#ffffff');
     // expect(packageDependencyEdge.opacity).to.equal(1.0);
-    expect(packageDependencyEdge.source.id).to.equal('P-musl-f7ad0ee8f1c27cb0');
-    expect(packageDependencyEdge.target.id).to.equal('P-busybox-fef07e9c95ea2bda');
+    expect(packageDependencyEdge.source.id).to.equal('P-busybox-fef07e9c95ea2bda');
+    expect(packageDependencyEdge.target.id).to.equal('P-musl-f7ad0ee8f1c27cb0');
     expect(packageDependencyEdge.preferredLength).to.equal(0.30);
     expect(packageDependencyEdge.visible).to.be.true;
 

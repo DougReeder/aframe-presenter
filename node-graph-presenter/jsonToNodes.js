@@ -13,7 +13,7 @@ function usableId(spdxId) {
 export async function jsonToNodes(file, url) {
   console.debug(`jsonToNodes file: ${file} url: ${url}`);
   const nodeMap = new Map();
-  const links = [];
+  const linkMap = new Map();
   const errors = [];
   const warnings = [];
   const info = [];
@@ -75,22 +75,26 @@ export async function jsonToNodes(file, url) {
     if ('ROOT_ID' === action) {
       rootId = link.title;
       continue;
+    } else if ('SKIP' === action) {
+      continue;
     } else if ('BAD' === action) {
       ++numBadRelationships;
       continue;
     }
 
-    links.push(link);
+    linkMap.set(link.id, link);
   }
 
   // TODO: should we just calculate based on the number of child nodes?
-  for (const link of links) {
+  for (const link of linkMap.values()) {
     if (link.source.id === rootId) {
       link.preferredLength = 0.60;
     }
   }
+  const rootNode = nodeMap.get(rootId);
+  if (rootNode) { rootNode.size *= 2; }
 
-  let msg = `Created ${nodeMap.size} nodes and ${links.length} edges`;
+  let msg = `Created ${nodeMap.size} nodes and ${linkMap.size} edges`;
   if (numBadRelationships) { msg += `; ignored ${numBadRelationships} bad edges`;}
   info.push(msg);
 
@@ -108,26 +112,46 @@ export async function jsonToNodes(file, url) {
     }
   }
 
-  return {nodes: Array.from(nodeMap.values()), links, errors, warnings, info};
+  return {nodes: Array.from(nodeMap.values()), links: Array.from(linkMap.values()), errors, warnings, info};
 
   function mapSpdxRelationship(relationship) {
-    const fromId = usableId(relationship.spdxElementId);
-    const toId = usableId(relationship.relatedSpdxElement);
-    const id = fromId + '_' + (relationship.relationshipType ?? '').slice(0,3) + '_' + toId;
+    let relType, sourceId, targetId;
+    if (relationship.relationshipType.endsWith('DEPENDENCY_OF')) {
+      relType = 'DEPENDS_ON';
+      sourceId = usableId(relationship.relatedSpdxElement);
+      targetId = usableId(relationship.spdxElementId);
+    } else if ('CONTAINED_BY' === relationship.relationshipType) {
+      relType = 'CONTAINS';
+      sourceId = usableId(relationship.relatedSpdxElement);
+      targetId = usableId(relationship.spdxElementId);
+    } else if ('DESCRIBED_BY' === relationship.relationshipType) {
+      relType = 'DESCRIBES';
+      sourceId = usableId(relationship.relatedSpdxElement);
+      targetId = usableId(relationship.spdxElementId);
+    } else {   // normal
+      relType = relationship.relationshipType;
+      sourceId = usableId(relationship.spdxElementId);
+      targetId = usableId(relationship.relatedSpdxElement);
+    }
+
+    const id = sourceId + '_' + (relType ?? '').slice(0,3) + '_' + targetId;
+    if (linkMap.has(id)) {
+      // doesn't inform user, because we assume the relationship and its inverse were both listed
+      console.info(`relationship ${relationship.spdxElementId + ' ' + relationship.relationshipType + ' ' + relationship.relatedSpdxElement} is duplicate of ${id}`);
+      return {action: 'SKIP'};
+    }
 
     let title;
-    if ([].includes(relationship.relationshipType)) {   // TODO: where is a titled edge useful?
-      title = relationship.relationshipType;
+    if ([].includes(relType)) {   // TODO: where is a titled edge useful?
+      title = relType;
     }
 
     if (relationship.spdxElementId === "SPDXRef-DOCUMENT" && relationship.relationshipType === "DESCRIBES") {
       return {action: 'ROOT_ID', link: {title: usableId(relationship.relatedSpdxElement)}};
     }
 
-    const color = RELATIONSHIP_TO_COLOR[relationship.relationshipType] || '#808080';
+    const color = RELATIONSHIP_TO_COLOR[relType] || '#808080';
 
-    const sourceId = usableId(relationship.spdxElementId);
-    const targetId = usableId(relationship.relatedSpdxElement);
     if (targetId === sourceId) {
       const msg = `“to” node can't be distinguished from “from” node for edge ${title || relationship.spdxElementId + ' ' + relationship.relationshipType + ' ' + relationship.relatedSpdxElement}`;
       console.warn(msg);
@@ -136,14 +160,14 @@ export async function jsonToNodes(file, url) {
     }
     const target = nodeMap.get(targetId);
     if (!target) {
-      warnings.push(`can't find “to” node for edge ${title || sourceId + ' ' + relationship.relationshipType + ' ' + targetId}`);
+      warnings.push(`can't find “to” node for edge ${title || sourceId + ' ' + relType + ' ' + targetId}`);
       return {action: 'BAD'};
     }
     const targetVisible = target.visible;
 
     const source = nodeMap.get(sourceId);
     if (!source) {
-      warnings.push(`can't find “from” node for edge ${title || sourceId + ' ' + relationship.relationshipType + ' ' + targetId}`);
+      warnings.push(`can't find “from” node for edge ${title || sourceId + ' ' + relType + ' ' + targetId}`);
       return {action: 'BAD'};
     }
     const sourceVisible = source.visible;
@@ -153,7 +177,7 @@ export async function jsonToNodes(file, url) {
 
     // files should be closer to their packages
     // TODO: It's fragile to depend on the primitive type, but it's confined to this source file.
-    const isContainsFile = relationship.relationshipType === 'CONTAINS' && target?.primitive === FILE_PRIMITIVE;
+    const isContainsFile = relType === 'CONTAINS' && target?.primitive === FILE_PRIMITIVE;
     const preferredLength = isContainsFile ? 0.08 : 0.30;
 
     const link = {id, title, color, source, target, preferredLength, visible: sourceVisible && targetVisible};
@@ -231,13 +255,13 @@ function mapSpdxFile(file) {
   if (file.description) {
     noteArr.push(file.description);
   }
-  if (file.fileComment) {
-    noteArr.push(file.fileComment);
+  if (file.comment) {
+    noteArr.push(file.comment);
   }
   if (file.licenseConcluded) {
     noteArr.push("license: " + file.licenseConcluded);
   }
-  for (const licenseInfo of file.licenseInfoInFiles) {
+  for (const licenseInfo of file.licenseInfoInFiles ?? []) {
     if (licenseInfo && licenseInfo !== file.licenseConcluded) {
       noteArr.push("license info: " + licenseInfo);
     }
@@ -255,7 +279,7 @@ function mapSpdxFile(file) {
   const linkUrl = null;
 
   let color = LICENSE_TO_COLOR[file.licenseConcluded];
-  for (const licenseInfo of file.licenseInfoInFiles) {
+  for (const licenseInfo of file.licenseInfoInFiles ?? []) {
     if (!color && licenseInfo) {
       color = LICENSE_TO_COLOR[file.copyrightText];
     }
@@ -295,10 +319,16 @@ function mapSpdxPackage(pkg) {
   if (pkg.versionInfo) {
     noteArr.push("v" + pkg.versionInfo);
   }
-  if (pkg.licenseConcluded) {
+  if (pkg.originator && 'NOASSERTION' !== pkg.originator) {
+    noteArr.push("originator: " + pkg.originator);
+  }
+  if (pkg.supplier && 'NOASSERTION' !== pkg.supplier) {
+    noteArr.push("supplier: " + pkg.supplier);
+  }
+  if (pkg.licenseConcluded && 'NOASSERTION' !== pkg.licenseConcluded) {
     noteArr.push("license: " + pkg.licenseConcluded);
   }
-  if (pkg.licenseDeclared && pkg.licenseConcluded !== pkg.licenseDeclared) {
+  if (pkg.licenseDeclared && pkg.licenseConcluded !== pkg.licenseDeclared && 'NOASSERTION' !== pkg.licenseDeclared) {
     noteArr.push("license declared: " + pkg.licenseDeclared);
   }
   // if (pkg.sourceInfo) {
@@ -356,12 +386,11 @@ function mapSpdxPackage(pkg) {
 }
 
 const RELATIONSHIP_TO_COLOR = {
-  'DESCRIBES': '#000000',
+  'DESCRIBES': '#000000',   // DESCRIBED_BY is reversed to this
   // package relationships
-  'DEPENDS_ON': '#ffffff',
-  'DEPENDENCY_OF': '#ffffff', // buildkit-syft-scanner but not in v3.0.1 standard?
+  'DEPENDS_ON': '#ffffff',   // *_DEPENDENCY_OF are reversed to this
   // file relationships
-  'CONTAINS': '#00ff00',
+  'CONTAINS': '#00ff00',   // CONTAINED_BY is reversed to this
   'OTHER': '#000000',
   // vulnerabilities
   'AFFECTS': '#ff0000',
@@ -385,7 +414,7 @@ const RELATIONSHIP_TO_COLOR = {
   'EXPANDS_TO': '#000080',
   'GENERATES': '#000080',
   'HAS_ADDED_FILE': '#000080',
-  'HAS_CONCLUEDED_LICENSE': '#000080',
+  'HAS_CONCLUDED_LICENSE': '#000080',
   'HAS_DATA_FILE': '#000080',
   'HAS_DECLARED_LICENSE': '#000080',
   'HAS_DELETED_FILE': '#000080',

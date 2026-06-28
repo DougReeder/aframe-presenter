@@ -258,8 +258,9 @@ describe('selectable-node-graph component', function() {
         // Trigger click on parentA
         parentAEl.emit('click', { target: parentAEl });
 
-        await waitForEvent(el, 'graph-updated');
-        await waitForEvent(el, 'graph-updated');
+        await waitForEvent(el, 'graph-updated');   // parentA
+        await waitForEvent(el, 'graph-updated');   // child1
+        await waitForEvent(el, 'graph-updated');   // child2
 
         // Verify children and edges are now visible
         expect(child1El.getAttribute('visible')).to.be.true;
