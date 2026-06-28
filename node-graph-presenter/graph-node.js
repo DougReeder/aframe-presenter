@@ -1,6 +1,8 @@
 // graph-node.js — A-Frame component for nodes of a graph
 // Copyright © 2026 by Doug Reeder under the MIT License
 
+const DEFAULT_SIZE = 0.06;
+
 AFRAME.registerComponent('graph-node', {
   schema: {
     id: {default: ''},
@@ -11,7 +13,7 @@ AFRAME.registerComponent('graph-node', {
     color: {type: 'color'},
     opacity: {default: 1.0},
     primitive: {default: 'box'},
-    size: {default: 0.06},           // in meters
+    size: {default: DEFAULT_SIZE},           // in meters
     details: {default: false},
     collapsed: {default: false},
     numChildren: {default: 0},
@@ -71,7 +73,7 @@ AFRAME.registerComponent('graph-node', {
     }
   },
 
-  setNodeGeometry: function (primitive, size) {
+  setNodeGeometry: function (primitive, size = DEFAULT_SIZE) {
     switch (primitive) {
       case 'sphere':
         this.el.setAttribute('geometry', {primitive: 'sphere', radius: size/2});
@@ -150,7 +152,7 @@ AFRAME.registerComponent('graph-node', {
     });
   },
 
-  setNodeTitle: function (title, size, isFlat = false) {
+  setNodeTitle: function (title, size = DEFAULT_SIZE, isFlat = false) {
     this.el.setAttribute('text', {
       value: title /*+ '\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n '*/,
       zOffset: isFlat ? 0.001 : size / 2 + 0.005,
@@ -160,7 +162,7 @@ AFRAME.registerComponent('graph-node', {
       side: 'double'});
   },
 
-  setCountChild: function (numChildren, size) {
+  setCountChild: function (numChildren, size = DEFAULT_SIZE) {
     if (numChildren) {
       this.el.setAttribute('text__count', {
         value: '' + numChildren,
@@ -175,7 +177,7 @@ AFRAME.registerComponent('graph-node', {
     }
   },
 
-  setNotesChild: function (notes, size, details) {
+  setNotesChild: function (notes, size = DEFAULT_SIZE, details = false) {
     this.el.querySelector('a-text')?.remove();
     if (!notes || !details) return;
 
@@ -193,7 +195,7 @@ AFRAME.registerComponent('graph-node', {
     this.el.appendChild(textEl);
   },
 
-  setLinkChild: function (linkUrl, size, details) {
+  setLinkChild: function (linkUrl, size = DEFAULT_SIZE, details = false) {
     this.el.querySelector('a-link')?.remove();
     if (!linkUrl || !details) return;
 
