@@ -20,11 +20,11 @@ jobs:
           node-version: ${{ matrix.node-version }}
       - name: workaround for extra source files
         run: mkdir src-dev
-      - name: assemble in dist
-        run: npm run assemble
-      - name: sync archive to S3
+      - name: assemble Model Presenter in dist
+        run: npm run assemble-model
+      - name: sync Model Presenter to S3
         uses: jakejarvis/s3-sync-action@be0c4ab89158cac4278689ebedd8407dd5f35a83
-        if: ${{ github.ref == 'refs/heads/main' && github.repository == 'DougReeder/group-viewer' }}
+        if: ${{ github.ref == 'refs/heads/main' && github.repository == 'DougReeder/aframe-presenter' }}
         with:
           args: --follow-symlinks --delete
         env:
@@ -34,3 +34,17 @@ jobs:
           AWS_S3_ENDPOINT: ${{ vars.AWS_S3_ENDPOINT }}
           SOURCE_DIR: 'dist'      # optional: defaults to entire repository
           DEST_DIR: 'modelpresenter'
+      - name: assemble Node Graph Presenter in dist-graph
+        run: npm run assemble-graph
+      - name: sync archive to S3
+        uses: jakejarvis/s3-sync-action@be0c4ab89158cac4278689ebedd8407dd5f35a83
+        if: ${{ github.ref == 'refs/heads/main' && github.repository == 'DougReeder/aframe-presenter' }}
+        with:
+          args: --follow-symlinks --delete
+        env:
+          AWS_S3_BUCKET: ${{ vars.AWS_S3_BUCKET }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_S3_ENDPOINT: ${{ vars.AWS_S3_ENDPOINT }}
+          SOURCE_DIR: 'dist-graph'      # optional: defaults to entire repository
+          DEST_DIR: 'nodegraphpresenter'

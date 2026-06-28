@@ -1,6 +1,7 @@
 assets/aframe-master*
 assets/aframe-dust-component.js
 dist/
+dist-graph/
 node-graph-presenter/build/
 src-dev/
 model-presenter/index.html
