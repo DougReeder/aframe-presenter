@@ -55,7 +55,7 @@ export async function jsonToNodes(file, url) {
   }
 
   // starts the main package at the center of the graph
-  const documentDescribes = (json?.relationships ?? []).find(r => r.relationshipType === "DESCRIBES" && r.spdxElementId === "SPDXRef-DOCUMENT");
+  const documentDescribes = (json?.relationships ?? []).find(r => r.relationshipType.toUpperCase() === "DESCRIBES" && r.spdxElementId === "SPDXRef-DOCUMENT");
   if (documentDescribes) {
     const mainId = usableId(documentDescribes.relatedSpdxElement);
     const mainPkgNode = nodeMap.get(mainId);
@@ -116,20 +116,28 @@ export async function jsonToNodes(file, url) {
 
   function mapSpdxRelationship(relationship) {
     let relType, sourceId, targetId;
-    if (relationship.relationshipType.endsWith('DEPENDENCY_OF')) {
+    if (relationship.relationshipType.toUpperCase().endsWith('DEPENDENCY_OF')) {
       relType = 'DEPENDS_ON';
       sourceId = usableId(relationship.relatedSpdxElement);
       targetId = usableId(relationship.spdxElementId);
-    } else if ('CONTAINED_BY' === relationship.relationshipType) {
+    } else if ('CONTAINED_BY' === relationship.relationshipType.toUpperCase()) {
       relType = 'CONTAINS';
       sourceId = usableId(relationship.relatedSpdxElement);
       targetId = usableId(relationship.spdxElementId);
-    } else if ('DESCRIBED_BY' === relationship.relationshipType) {
+    } else if ('DESCRIBED_BY' === relationship.relationshipType.toUpperCase()) {
       relType = 'DESCRIBES';
       sourceId = usableId(relationship.relatedSpdxElement);
       targetId = usableId(relationship.spdxElementId);
+    } else if ('GENERATED_FROM' === relationship.relationshipType.toUpperCase()) {
+      relType = 'GENERATES';
+      sourceId = usableId(relationship.relatedSpdxElement);
+      targetId = usableId(relationship.spdxElementId);
+    } else if ('ANCESTOR_OF' === relationship.relationshipType.toUpperCase()) {
+      relType = 'DESCENDANT_OF';
+      sourceId = usableId(relationship.relatedSpdxElement);
+      targetId = usableId(relationship.spdxElementId);
     } else {   // normal
-      relType = relationship.relationshipType;
+      relType = relationship.relationshipType.toUpperCase();
       sourceId = usableId(relationship.spdxElementId);
       targetId = usableId(relationship.relatedSpdxElement);
     }
@@ -146,7 +154,7 @@ export async function jsonToNodes(file, url) {
       title = relType;
     }
 
-    if (relationship.spdxElementId === "SPDXRef-DOCUMENT" && relationship.relationshipType === "DESCRIBES") {
+    if (relationship.spdxElementId === "SPDXRef-DOCUMENT" && relationship.relationshipType.toUpperCase() === "DESCRIBES") {
       return {action: 'ROOT_ID', link: {title: usableId(relationship.relatedSpdxElement)}};
     }
 
@@ -241,6 +249,8 @@ const PKGMGR_TO_PRIMITIVE = {
   'pkg:docker': 'torus',
   'pkg:golang': 'triangle',
   'pkg:composer': 'ring',   // PHP
+  // 'pkg:swift': ''
+  // pkg:oci: ''
 };
 
 function mapSpdxFile(file) {
@@ -386,12 +396,16 @@ function mapSpdxPackage(pkg) {
 }
 
 const RELATIONSHIP_TO_COLOR = {
-  'DESCRIBES': '#000000',   // DESCRIBED_BY is reversed to this
+  'DESCRIBES': '#f6f600',   // DESCRIBED_BY is reversed to this
   // package relationships
   'DEPENDS_ON': '#ffffff',   // *_DEPENDENCY_OF are reversed to this
   // file relationships
   'CONTAINS': '#00ff00',   // CONTAINED_BY is reversed to this
+  //
+  'GENERATES': '#0000d0',   // GENERATED_FROM is reversed to this
+  'DESCENDANT_OF': '#c000c0',   // ANCESTOR_OF is reversed to this
   'OTHER': '#000000',
+
   // vulnerabilities
   'AFFECTS': '#ff0000',
   'DOES_NOT_AFFECT': '#0000ff',
@@ -402,21 +416,25 @@ const RELATIONSHIP_TO_COLOR = {
   'HAS_ASSESSMENT_FOR': '#808080',
   'HAS_ASSOCIATED_VULNERABILITY': '#ffff00',
 
+  // LLM
+  'TRAINED_ON': '#800000',
+  'TRAINEDON': '#800000',
+  'TESTED_ON': '#008080',
+  'TESTEDON': '#008080',
+
   // other relationships
-  'AMENDED_BY': '#000080',
-  'ANCESTOR_OF': '#000080',
-  'AVAILABLE_FROM': '#000080',
-  'CONFIGURES': '#000080',
-  'COORDINATED_BY': '#000080',
-  'COPIED_TO': '#000080',
-  'DELEGATED_TO': '#000080',
-  'DESCENDANT_OF': '#000080',
-  'EXPANDS_TO': '#000080',
-  'GENERATES': '#000080',
-  'HAS_ADDED_FILE': '#000080',
-  'HAS_CONCLUDED_LICENSE': '#000080',
-  'HAS_DATA_FILE': '#000080',
-  'HAS_DECLARED_LICENSE': '#000080',
-  'HAS_DELETED_FILE': '#000080',
+  'AMENDED_BY': '#ff0000',
+  'ANCESTOR_OF': '#ff0000',
+  'AVAILABLE_FROM': '#ff0000',
+  'CONFIGURES': '#ff0000',
+  'COORDINATED_BY': '#ff0000',
+  'COPIED_TO': '#ff0000',
+  'DELEGATED_TO': '#ff0000',
+  'EXPANDS_TO': '#ff0000',
+  'HAS_ADDED_FILE': '#ff0000',
+  'HAS_CONCLUDED_LICENSE': '#0000ff',
+  'HAS_DATA_FILE': '#ff0000',
+  'HAS_DECLARED_LICENSE': '#0000a0',
+  'HAS_DELETED_FILE': '#ff0000',
   //...
 }
