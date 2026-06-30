@@ -153,13 +153,16 @@ AFRAME.registerComponent('graph-node', {
   },
 
   setNodeTitle: function (title, size = DEFAULT_SIZE, isFlat = false) {
-    this.el.setAttribute('text', {
+    this.titleEl?.parentNode?.removeChild(this.titleEl);
+    this.titleEl = document.createElement('a-entity');
+    this.titleEl.object3D?.position.set(0, size, 0);
+    this.titleEl.setAttribute('text', {
       value: title /*+ '\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n '*/,
-      zOffset: isFlat ? 0.001 : size / 2 + 0.005,
       align: 'center',
       width: size * 6, /*height: 1,*/
       wrapCount: 25,
-      side: 'double'});
+      side: 'front'});
+    this.el.appendChild(this.titleEl);
   },
 
   setCountChild: function (numChildren, size = DEFAULT_SIZE) {
@@ -178,21 +181,22 @@ AFRAME.registerComponent('graph-node', {
   },
 
   setNotesChild: function (notes, size = DEFAULT_SIZE, details = false) {
-    this.el.querySelector('a-text')?.remove();
+    this.notesEl?.parentNode?.removeChild(this.notesEl);
     if (!notes || !details) return;
 
-    const textEl = document.createElement('a-text');
-    textEl.object3D.position.set(0, size, 0);
-    textEl.setAttribute('value', notes);
-    textEl.setAttribute('width', size * 4);
-    textEl.setAttribute('wrap-count', 25);
-    textEl.setAttribute('anchor', 'center');
-    textEl.setAttribute('baseline', 'center');
+    this.notesEl = document.createElement('a-text');
+    this.notesEl.object3D.position.set(0, -1.5 * size, 0);
+    this.notesEl.setAttribute('value', notes);
+    this.notesEl.setAttribute('width', size * 4);
+    this.notesEl.setAttribute('wrap-count', 25);
+    this.notesEl.setAttribute('anchor', 'center');
+    this.notesEl.setAttribute('baseline', 'center');
+    this.notesEl.setAttribute('align', 'left');
 
-    textEl.setAttribute('geometry', 'primitive: plane; width: 0; height: 0');
-    textEl.setAttribute('material', 'color: black; opacity: 0.667');
+    this.notesEl.setAttribute('geometry', 'primitive: plane; width: 0; height: 0');
+    this.notesEl.setAttribute('material', 'color: black; opacity: 0.667');
 
-    this.el.appendChild(textEl);
+    this.el.appendChild(this.notesEl);
   },
 
   setLinkChild: function (linkUrl, size = DEFAULT_SIZE, details = false) {
@@ -200,7 +204,7 @@ AFRAME.registerComponent('graph-node', {
     if (!linkUrl || !details) return;
 
     const linkEl = document.createElement('a-link');
-    linkEl.object3D.position.set(0, -(size/2 + 0.04), 0);
+    linkEl.object3D.position.set(size/2 + 0.04, 0, 0);
     linkEl.object3D.scale.set(0.025, 0.025, 0.025);
     linkEl.setAttribute('href', linkUrl);
     linkEl.setAttribute('title', ".");
@@ -224,6 +228,9 @@ AFRAME.registerComponent('graph-node', {
 
   showDetails: function (_evt) {
     this.el.setAttribute('graph-node', {details: true});
+    if (Number.isFinite(this.el.parentEl.cameraWorldPos?.x)) {
+      this.notesEl?.object3D?.lookAt(this.el.parentEl.cameraWorldPos);
+    }
   },
 
   hideDetails: function (_evt) {
@@ -232,7 +239,12 @@ AFRAME.registerComponent('graph-node', {
 
   // play: function () {},
   // pause: function () {},
-  // tick: function (time, timeDelta) {},
+
+  tick: function (time, timeDelta) {
+    if (Number.isFinite(this.el.parentEl.cameraWorldPos?.x)) {
+      this.titleEl?.object3D?.lookAt(this.el.parentEl.cameraWorldPos);
+    }
+  },
 
   remove: function () {
     for (const child of Array.from(this.el.children)) {

@@ -37,6 +37,8 @@ AFRAME.registerComponent('selectable-node-graph', {
 		this.handlers.verticalSmaller = this.incrementSpread.bind(this, 1, 1/SPREADING_FACTOR);
 		this.handlers.toggleNode = this.toggleNode.bind(this);
 
+		this.el.cameraWorldPos = new THREE.Vector3();
+
 		const controlStrip = document.createElement('div');
 		controlStrip.style.width = 'calc(100% - 1em - 65px)';
 		controlStrip.style.position = 'absolute';
@@ -511,6 +513,10 @@ AFRAME.registerComponent('selectable-node-graph', {
 	},
 
 	play: function () {
+	},
+
+	tick: function (time, timeDelta) {
+		this.el.sceneEl.systems.camera?.activeCameraEl?.object3D?.getWorldPosition(this.el.cameraWorldPos)
 	},
 
 	/** Called when a component is removed (e.g., via removeAttribute). */
