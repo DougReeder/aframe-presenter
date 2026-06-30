@@ -703,7 +703,7 @@ drag to rotate
 			this.transientDialog.style.zIndex = '20';
 			this.transientDialog.show();
 
-			setTimeout(this.transientDialog.close.bind(this.transientDialog),7000);
+			setTimeout(this.transientDialog.close.bind(this.transientDialog),9000);
 		}, 100);
 	},
 

@@ -7,7 +7,7 @@ describe('jsonToNodes', function() {
     URL.revokeObjectURL(blobUrl);
   });
 
-  it('should parse a simple SPDX JSON with one package node', async function() {
+  it('should parse a simple SPDX v2 JSON with one package node', async function() {
     const jsonObj = {
       "spdxVersion": "SPDX-2.3",
       "dataLicense": "CC0-1.0",
@@ -74,7 +74,7 @@ describe('jsonToNodes', function() {
     expect(result.nodes).to.have.lengthOf(1);
   });
 
-  it('should parse a SPDX JSON with package nodes and relationship edges', async function() {
+  it('should parse a SPDX v2 JSON with package nodes and relationship edges', async function() {
     const jsonObj = {
       "SPDXID": "SPDXRef-DOCUMENT",
       "packages": [
@@ -191,7 +191,7 @@ describe('jsonToNodes', function() {
     expect(result.links).to.have.lengthOf(1);
   });
 
-  it('should parse a SPDX JSON with file & package nodes and relationship edges', async function() {
+  it('should parse a SPDX v2 JSON with file & package nodes and relationship edges', async function() {
     const jsonObj = {
       "SPDXID": "SPDXRef-DOCUMENT",
       "files": [

@@ -57,7 +57,7 @@ AFRAME.registerComponent('selectable-node-graph', {
 		openFileBtn.style.minHeight = '40px';
 		openFileBtn.style.marginRight = '2em';
 		openFileBtn.style.zIndex = '10';
-		openFileBtn.innerText = "Select Noda .csv or SPDX .json file";
+		openFileBtn.innerText = "Select Noda .csv or SPDX v2 .json file";
 		controlStrip.appendChild(openFileBtn);
 		openFileBtn.addEventListener('click', this.handlers.openGraphFile);
 
@@ -77,9 +77,9 @@ AFRAME.registerComponent('selectable-node-graph', {
 		const urlInput = document.createElement('input');
 		urlInput.setAttribute('id', 'urlInput');
 		urlInput.setAttribute('type', 'url');
-		urlInput.setAttribute('placeholder', "Paste a URL to a Noda .csv or SPDX .json");
+		urlInput.setAttribute('placeholder', "Paste a URL to a Noda .csv or SPDX v2 .json");
 		urlInput.style.height = '40px';
-		urlInput.style.width = '20em';
+		urlInput.style.width = '22em';
 		urlInput.style.paddingLeft = '1em';
 		urlInput.style.zIndex = '10';
 		urlControls.appendChild(urlInput);
@@ -89,7 +89,7 @@ AFRAME.registerComponent('selectable-node-graph', {
 		const openUrlBtn = document.createElement('button');
 		openUrlBtn.style.minHeight = '40px';
 		openUrlBtn.style.zIndex = '10';
-		openUrlBtn.innerText = "Fetch Noda .csv or SPDX .json from URL";
+		openUrlBtn.innerText = "Fetch from URL";
 		urlControls.appendChild(openUrlBtn);
 		openUrlBtn.addEventListener('click', this.handlers.openUrl);
 
@@ -327,8 +327,8 @@ AFRAME.registerComponent('selectable-node-graph', {
 			if ('drop' === evt.type || 'INPUT' !== evt.target.tagName) {
 				evt.stopPropagation();
 				evt.preventDefault();
-				console.info(`Only a Noda .csv or SPDX .json file can be ${'paste' === evt.type ? "pasted" : "dropped"} here`);
-				postMessage({kind: 'TRANSIENT_MSG', msg: `Only a Noda .csv or SPDX .json file can be ${'paste' === evt.type ? "pasted" : "dropped"} here`});
+				console.info(`Only a Noda .csv or SPDX v2 .json file can be ${'paste' === evt.type ? "pasted" : "dropped"} here`);
+				postMessage({kind: 'TRANSIENT_MSG', msg: `Only a Noda .csv or SPDX v2 .json file can be ${'paste' === evt.type ? "pasted" : "dropped"} here`});
 			}
 		} catch (err) {
 			console.error(`drop:`, err);
