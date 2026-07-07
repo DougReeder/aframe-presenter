@@ -438,8 +438,7 @@ AFRAME.registerComponent('selectable-model', {
 		this.controlStrip?.remove();
 		this.fileInpt?.remove();
 		this.urlInput?.remove();
-		this.transientDialog?.remove();
-		this.persistentDialog?.remove();
+		postMessage({kind: 'CLEAR_PERSISTENT_MSG'});
 
 		document.removeEventListener('paste', this.handlers.drop, { capture: true });
 		this.el.sceneEl.removeEventListener('dragover', this.handlers.preventDefault);

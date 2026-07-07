@@ -13,12 +13,9 @@ const RAYCASTER_CONFIG = {objects: '.' + PRESENTATION_CLASS, lineOpacity: 0.667,
 const CURSOR_PREFIX_LEFT = 'cursor-left-';
 const CURSOR_PREFIX_RIGHT = 'cursor-right-';
 const HELP_TEXT =
-`Organize meetings using your existing software.
+`You can easily bring this tool into your existing video meetings. Simply share it by clicking "Share session" or clicking “Copy session URL” and pasting the link into your text chat pane. Continue to use your normal audio during your presentation.
 
-Click “Share session”, or “Copy session URL” then paste the URL into your meeting text chat.
-While presenting, continue to use your meeting audio.
-
-Any user in VR can display pointers using controllers or hand-tracking.`;
+Any user in VR can point and interact using either their controllers or hand-tracking.`;
 
 AFRAME.registerComponent('presenter', {
 	dependencies: [],
@@ -40,7 +37,8 @@ AFRAME.registerComponent('presenter', {
 		this.handlers.messageListener = this.messageListener.bind(this);
 		this.handlers.shareSession = this.shareSession.bind(this);
 		this.handlers.copySessionUrl = this.copySessionUrl.bind(this);
-		this.handlers.showHelp = this.showPersistentMsg.bind(this, HELP_TEXT);
+		const helpTxt = HELP_TEXT + (document.getElementById(this.data.presentationId)?.HELP_TEXT || "");
+		this.handlers.showHelp = this.showPersistentMsg.bind(this, helpTxt);
 		this.handlers.userAdded = this.userAdded.bind(this);
 		this.handlers.userExit = this.userExit.bind(this);
 		this.handlers.horizontalLarger = this.emitEventOnPresentation.bind(this, 'horizontal-larger');
@@ -719,6 +717,7 @@ drag to rotate
 				this.persistentDialog.style.right = '1em';
 				this.persistentDialog.style.marginRight = '0';
 				this.persistentDialog.style.left = '1em';
+				this.persistentDialog.style.maxWidth = '50ex';
 				this.persistentDialog.style.zIndex = '20';
 				document.body.appendChild(this.persistentDialog);
 				const div = document.createElement('div');

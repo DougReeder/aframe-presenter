@@ -37,6 +37,7 @@ AFRAME.registerComponent('selectable-node-graph', {
 		this.handlers.verticalSmaller = this.incrementSpread.bind(this, 1, 1/SPREADING_FACTOR);
 		this.handlers.toggleNode = this.toggleNode.bind(this);
 
+		this.el.HELP_TEXT = "\n\nAny user can hover over a node to display its notes. Clicking on a node will hide any related items beneath it that don't have a visible path back to a root.";
 		this.el.cameraWorldPos = new THREE.Vector3();
 
 		const controlStrip = document.createElement('div');
@@ -524,8 +525,7 @@ AFRAME.registerComponent('selectable-node-graph', {
 		this.controlStrip?.remove();
 		this.fileInpt?.remove();
 		this.urlInput?.remove();
-		this.transientDialog?.remove();
-		this.persistentDialog?.remove();
+		postMessage({kind: 'CLEAR_PERSISTENT_MSG'});
 
 		document.removeEventListener('paste', this.handlers.drop, { capture: true });
 		this.el.sceneEl.removeEventListener('dragover', this.handlers.preventDefault);
