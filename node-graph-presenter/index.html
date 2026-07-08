@@ -49,13 +49,14 @@
               material="src: #floorTexture; repeat: 100 100; normalMap: #floorNormalMap; normalTextureRepeat: 100 100; ambientOcclusionMap: #floorAmbientOcclusionMap; ambientOcclusionTextureRepeat: 100 100; "></a-entity>
 
     <a-gltf-model id="plantPot" src="#timberPlantPot" position="-3.75 -0.06 -3.75" rotation="0 45 0" scale="0.03 0.02 0.03" hide-on-enter-ar></a-gltf-model>
-    <a-gltf-model id="panel" src="#partitionPanel" position="3.5 0 -3.5" rotation="0 -45 0" scale="0.025 0.01 0.01"></a-gltf-model>
-    <a-image src="#key-SPDX-primitives" height="1.5" width="0.84375" position="2.355 1.057 -4.641" rotation="0 -45 0"></a-image>
-    <a-image src="#key-SPDX-line-colors" height="1.5" width="0.84375" position="2.831 1.057 -4.154" rotation="0 -45 0"></a-image>
+    <a-gltf-model id="panel" src="#partitionPanel" position="3.5 0 -3.5" rotation="0 -45 0" scale="0.025 0.01 0.01" hide-on-enter-ar></a-gltf-model>
+    <a-image src="#key-SPDX-primitives" height="1.5" width="0.84375" position="2.355 1.057 -4.641" rotation="0 -45 0" hide-on-enter-ar></a-image>
+    <a-image src="#key-SPDX-line-colors" height="1.5" width="0.84375" position="2.831 1.057 -4.154" rotation="0 -45 0" hide-on-enter-ar></a-image>
     <a-gltf-model id="woodenTable" src="#lowPolyWoodenTable" position="3.75 0 3.75" rotation="0 -45 0" scale="25 20 25" hide-on-enter-ar></a-gltf-model>
     <a-gltf-model id="greySofa" src="#pompeiiLightGreyDoubleSofa" position="-3.5 0 3.5" rotation="0 135 0" scale="1.75 1.25 1" hide-on-enter-ar></a-gltf-model>
 
     <a-simple-sun-sky sun-position="-0.62 0.8 1" fog-color="#8c8c8c" light-color="#1288df" dark-color="#0f5083" sun-color="#c1bdb9" radius="1100" hide-on-enter-ar></a-simple-sun-sky>
+    <a-sky id="arVeil" material="color: #404040; opacity: 0.6; transparent: true" visible="false"></a-sky>
 </a-scene>
 
 <template id="avatarTemplate">
