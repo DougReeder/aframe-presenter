@@ -41,7 +41,7 @@ AFRAME.registerComponent('selectable-node-graph', {
 		this.el.cameraWorldPos = new THREE.Vector3();
 
 		const controlStrip = document.createElement('div');
-		controlStrip.style.width = 'calc(100% - 1em - 65px)';
+		controlStrip.style.maxWidth = 'calc(100% - 2em)';
 		controlStrip.style.position = 'absolute';
 		controlStrip.style.left = '1em';
 		controlStrip.style.bottom = '1em';
@@ -73,6 +73,7 @@ AFRAME.registerComponent('selectable-node-graph', {
 		const urlControls = document.createElement('div');
 		urlControls.style.display = 'flex';
 		urlControls.style.gap = '0.5em';
+		urlControls.style.flexWrap = 'wrap';
 		controlStrip.appendChild(urlControls);
 
 		const urlInput = document.createElement('input');

@@ -24,7 +24,7 @@
 </head>
 <body>
 
-<a-scene xr-mode-ui="XRMode: xr" fog="type: exponential; density:0.1; color: #444; near: 3"
+<a-scene xr-mode-ui="enabled: false" fog="type: exponential; density:0.1; color: #444; near: 3"
          raycaster="interval: 100; objects: .presentation" cursor__mouse="rayOrigin: mouse" cursor__xrselect="rayOrigin: xrselect"
          croquet="eventRateLimit: 60; tps: 45; spawnPoint: 0 0 0; ">
     <a-assets timeout="10000">
@@ -43,13 +43,13 @@
 
     <a-entity id="presentation" selectable-node-graph multiuser></a-entity>
 
-    <a-presenter id="presenter" presentationId="presentation" pointerModelId="pointerModel" fly="false" tps="60"></a-presenter>
+    <a-presenter id="presenter" presentationId="presentation" pointerModelId="pointerModel" fly="true" tps="60"></a-presenter>
 
     <a-entity id="floor" geometry="primitive: plane; height: 100; width: 100;" rotation="-90 0 0" hide-on-enter-ar
               material="src: #floorTexture; repeat: 100 100; normalMap: #floorNormalMap; normalTextureRepeat: 100 100; ambientOcclusionMap: #floorAmbientOcclusionMap; ambientOcclusionTextureRepeat: 100 100; "></a-entity>
 
     <a-gltf-model id="plantPot" src="#timberPlantPot" position="-3.75 -0.06 -3.75" rotation="0 45 0" scale="0.03 0.02 0.03" hide-on-enter-ar></a-gltf-model>
-    <a-gltf-model id="panel" src="#partitionPanel" position="3.5 0 -3.5" rotation="0 -45 0" scale="0.025 0.01 0.01" hide-on-enter-ar></a-gltf-model>
+    <a-gltf-model id="panel" src="#partitionPanel" position="3.5 0 -3.5" rotation="0 -45 0" scale="0.025 0.01 0.01"></a-gltf-model>
     <a-image src="#key-SPDX-primitives" height="1.5" width="0.84375" position="2.355 1.057 -4.641" rotation="0 -45 0"></a-image>
     <a-image src="#key-SPDX-line-colors" height="1.5" width="0.84375" position="2.831 1.057 -4.154" rotation="0 -45 0"></a-image>
     <a-gltf-model id="woodenTable" src="#lowPolyWoodenTable" position="3.75 0 3.75" rotation="0 -45 0" scale="25 20 25" hide-on-enter-ar></a-gltf-model>

@@ -35,6 +35,8 @@ AFRAME.registerComponent('presenter', {
 	/** Called once when component is attached. Generally for initial setup. */
 	init: function () {
 		this.handlers.messageListener = this.messageListener.bind(this);
+		this.handlers.handleVrBtn = this.handleXrBtn.bind(this, false);
+		this.handlers.handleArBtn = this.handleXrBtn.bind(this, true);
 		this.handlers.shareSession = this.shareSession.bind(this);
 		this.handlers.copySessionUrl = this.copySessionUrl.bind(this);
 		const helpTxt = HELP_TEXT + (document.getElementById(this.data.presentationId)?.HELP_TEXT || "");
@@ -60,39 +62,71 @@ AFRAME.registerComponent('presenter', {
 		window.addEventListener("message", this.handlers.messageListener);
 
 		const controlStrip = document.createElement('div');
-		controlStrip.style.height = '40px';
-		controlStrip.style.width = '95%';
+		controlStrip.style.width = 'calc(100% - 2em)';
 		controlStrip.style.position = 'absolute';
 		controlStrip.style.left = '1em';
 		controlStrip.style.top = '1em';
 		controlStrip.style.display = 'flex';
-		controlStrip.style.justifyContent = 'flex-start'
+		controlStrip.style.justifyContent = 'space-between';
+		controlStrip.style.alignItems = 'stretch';
+		controlStrip.style.flexWrap = 'wrap';
+		controlStrip.style.rowGap = '1em';
+		controlStrip.style.columnGap = '0.5em';
 		document.body.appendChild(controlStrip);
+
+		const shareBtns = document.createElement('div');
+		shareBtns.style.minHeight = '40px';
+		shareBtns.style.display = 'flex';
+		shareBtns.style.justifyContent = 'flex-start'
+		shareBtns.style.columnGap = '0.5em';
+		controlStrip.appendChild(shareBtns);
 
 		if ('function' === typeof navigator.share) {
 			const shareBtn = document.createElement('button');
 			shareBtn.style.zIndex = '10';
+			shareBtn.style.padding = '0.75em';
 			shareBtn.innerText = "Share session";
-			controlStrip.appendChild(shareBtn);
+			shareBtns.appendChild(shareBtn);
 			shareBtn.addEventListener('click', this.handlers.shareSession);
 		}
 
 		const copyBtn = document.createElement('button');
-		copyBtn.style.marginLeft = '0.5em';
 		copyBtn.style.zIndex = '10';
+		copyBtn.style.padding = '0.75em';
 		copyBtn.innerText = "Copy session URL";
-		controlStrip.appendChild(copyBtn);
+		shareBtns.appendChild(copyBtn);
 		copyBtn.addEventListener('click', this.handlers.copySessionUrl);
 
 		const helpBtn = document.createElement('button');
-		helpBtn.style.height = '40px';
-		helpBtn.style.position = 'absolute';
-		helpBtn.style.right = '1em';
-		helpBtn.style.top = '1em';
-		helpBtn.style.zIndex = '10';
 		helpBtn.innerText = "Help";
-		document.body.appendChild(helpBtn);
+		helpBtn.style.zIndex = '10';
+		helpBtn.style.padding = '0.75em';
+		shareBtns.appendChild(helpBtn);
 		helpBtn.addEventListener('click', this.handlers.showHelp);
+
+		const xrBtns = document.createElement('div');
+		xrBtns.style.minHeight = '40px';
+		xrBtns.style.display = 'flex';
+		xrBtns.style.flexDirection = 'row-reverse';
+		xrBtns.style.justifyContent = 'flex-end';
+		xrBtns.style.columnGap = '0.5em';
+		controlStrip.appendChild(xrBtns);
+
+		const vrBtn = document.createElement('button');
+		vrBtn.innerText = "VR";
+		vrBtn.style.zIndex = '10';
+		vrBtn.style.padding = '0.75em';
+		xrBtns.appendChild(vrBtn);
+		vrBtn.addEventListener('click', this.handlers.handleVrBtn);
+		this.vrBtn = vrBtn;
+
+		const arBtn = document.createElement('button');
+		arBtn.innerText = "AR";
+		arBtn.style.zIndex = '10';
+		arBtn.style.padding = '0.75em';
+		xrBtns.appendChild(arBtn);
+		arBtn.addEventListener('click', this.handlers.handleArBtn);
+		this.arBtn = arBtn;
 
 		const data = this.data;
 		const el = this.el;
@@ -186,9 +220,50 @@ AFRAME.registerComponent('presenter', {
 			frame.setAttribute('color', 'black');
 			el.sceneEl.appendChild(frame);
 		}
+
+		const vrPrmse = navigator.xr?.isSessionSupported("immersive-vr");
+		const arPrmse = navigator.xr?.isSessionSupported("immersive-ar");
+		Promise.allSettled([vrPrmse, arPrmse]).then(results => {
+			if ('fulfilled' === results[0].status) {
+				this.isVrSupported = results[0].value;
+			} else {
+				console.error(`VR sessions:`, results[0].reason);
+			}
+			if (!this.isVrSupported) {
+				if (AFRAME.utils.device.isMobile ()) {
+					vrBtn.style.display = 'none';
+				} else {
+					vrBtn.innerText = "Full Screen";
+				}
+			}
+
+			if ('fulfilled' === results[1].status) {
+				this.isArSupported = results[1].value;
+			} else {
+				console.error(`VR sessions:`, results[1].reason);
+			}
+			if (!this.isArSupported) {
+				arBtn.style.display = 'none';
+			}
+		});
 	},
 
 	handlers: {
+	},
+
+	handleXrBtn: function (isAr, _evt) {
+		try {
+			this.isAr = isAr;
+			if (isAr) {
+				this.el.sceneEl.setAttribute('webxr', {referenceSpaceType: 'unbounded', requiredFeatures: ['unbounded']});
+				this.el.sceneEl.enterAR();
+			} else {
+				this.el.sceneEl.setAttribute('webxr', {referenceSpaceType: 'local-floor', requiredFeatures: ['local-floor']});
+				this.el.sceneEl.enterVR();
+			}
+		} catch (err) {
+			console.log(`handleXrButton:`, err);
+		}
 	},
 
 	shareSession: async function (_evt) {
@@ -493,11 +568,18 @@ drag to rotate
 		cursor?.setAttribute('visible', false);
 	},
 
-	enterXR: function (evt) {
+	enterXR: function (_evt) {
 		this.raycasterConfigSceneCache = structuredClone(this.el.sceneEl.getAttribute("raycaster"));
 		this.el.sceneEl.removeAttribute("cursor__mouse");
 		this.el.sceneEl.removeAttribute("cursor__xrselect");
 		this.el.sceneEl.removeAttribute("raycaster");
+		this.vrBtn.style.visibility = 'hidden';
+		this.arBtn.style.visibility = 'hidden';
+
+		if (this.isAr) {
+			const rigPosition = this.rig.getAttribute('position');
+			this.rig.setAttribute('position', {y: rigPosition.y + 1.6});
+		}
 
 		this.el.sceneEl.xrSession.addEventListener('visibilitychange', this.handlers.sessionVisibilityChange);
 	},
@@ -507,6 +589,13 @@ drag to rotate
 		this.el.sceneEl.setAttribute("raycaster", this.raycasterConfigSceneCache);
 		this.el.sceneEl.setAttribute("cursor__mouse", "rayOrigin:mouse");
 		this.el.sceneEl.setAttribute("cursor__xrselect", "rayOrigin:mouse");
+		this.vrBtn.style.visibility = 'visible';
+		this.arBtn.style.visibility = 'visible';
+
+		if (this.isAr) {
+			const rigPosition = this.rig.getAttribute('position');
+			this.rig.setAttribute('position', {y: rigPosition.y - 1.6});
+		}
 	},
 
 	/** handles both left & right cursors */
@@ -701,7 +790,7 @@ drag to rotate
 			this.transientDialog.style.zIndex = '20';
 			this.transientDialog.show();
 
-			setTimeout(this.transientDialog.close.bind(this.transientDialog),9000);
+			setTimeout(this.transientDialog.close.bind(this.transientDialog),8000);
 		}, 100);
 	},
 
