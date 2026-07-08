@@ -579,6 +579,8 @@ drag to rotate
 		if (this.isAr) {
 			const rigPosition = this.rig.getAttribute('position');
 			this.rig.setAttribute('position', {y: rigPosition.y + 1.6});
+
+			document.getElementById('arVeil')?.setAttribute('visible', true);
 		}
 
 		this.el.sceneEl.xrSession.addEventListener('visibilitychange', this.handlers.sessionVisibilityChange);
@@ -595,6 +597,8 @@ drag to rotate
 		if (this.isAr) {
 			const rigPosition = this.rig.getAttribute('position');
 			this.rig.setAttribute('position', {y: rigPosition.y - 1.6});
+
+			document.getElementById('arVeil')?.setAttribute('visible', false);
 		}
 	},
 
